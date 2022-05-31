@@ -160,7 +160,7 @@ where
         let node_index = min_priority_queue.next_value_index();
         let edge_layer_index_range = Range {
             start: (min_priority_queue.vals.len() / 2) - 1,
-            end: node_index
+            end: node_index,
         };
 
         edge_layer_index_range.for_each(|i| min_priority_queue.fix_branch_heap_invariant(i));
@@ -236,7 +236,27 @@ mod min_indexed_pq_tests {
         let values = vec![9, 8, 7, 6, 5, 1, 2, 2, 2, 3, 4, 0];
         let mut min_ipq = MinIndexedPriorityQueue::new(&values);
 
-        println!("");
+        assert_eq!(
+            min_ipq.vals,
+            [
+                Some(0),
+                Some(2),
+                Some(1),
+                Some(6),
+                Some(3),
+                Some(2),
+                Some(2),
+                Some(9),
+                Some(8),
+                Some(5),
+                Some(4),
+                Some(7),
+                None,
+                None,
+                None,
+                None
+            ]
+        );
     }
 }
 
