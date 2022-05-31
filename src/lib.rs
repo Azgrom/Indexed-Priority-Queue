@@ -157,7 +157,7 @@ where
             // position_map:
             // inverse_map:
         };
-        let node_index = min_priority_queue.next_value_index() - 1;
+        let node_index = min_priority_queue.next_value_index();
         let edge_layer_index_range = Range {
             start: (min_priority_queue.vals.len() / 2) - 1,
             end: node_index
