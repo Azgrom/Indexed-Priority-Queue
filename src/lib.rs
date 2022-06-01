@@ -3,9 +3,26 @@ use std::ops::Range;
 mod ipq;
 
 fn max_priority<T>(value_to_insert: &Option<T>, inserted_parent_node_value: &Option<T>) -> bool
-    where T: PartialOrd
+where
+    T: PartialOrd,
 {
     Some(value_to_insert) >= Some(inserted_parent_node_value)
+}
+
+fn last_some<T>(vals: &Vec<Option<T>>) -> usize {
+    vals.iter().rposition(|x| x.is_some()).unwrap()
+}
+
+fn number_of_layers<T>(vals: &Vec<Option<T>>) -> usize {
+    let mut number_of_layers = 1;
+    let mut n = vals.len().next_power_of_two();
+
+    while n != 2 {
+        n /= 2;
+        number_of_layers += 1;
+    }
+
+    number_of_layers
 }
 
 fn parent_node_index(node_index: usize) -> usize {
@@ -16,21 +33,27 @@ fn parent_node_index(node_index: usize) -> usize {
     };
 }
 
-fn last_some<T>(vals: &Vec<Option<T>>) -> usize {
-    vals.iter().rposition(|x| x.is_some()).unwrap()
-}
-
 fn left_child<T>(vals: &Vec<Option<T>>, node_index: usize) -> Option<&T> {
     let i = 2 * node_index + 1;
     return if i < vals.len() {
         vals[i].as_ref()
     } else {
         None
-    }
+    };
+}
+
+fn right_child<T>(vals: &Vec<Option<T>>, node_index: usize) -> Option<&T> {
+    let i = 2 * node_index + 2;
+    return if i < vals.len() {
+        vals[i].as_ref()
+    } else {
+        None
+    };
 }
 
 fn set_vals<T>(values: &Vec<T>) -> Vec<Option<T>>
-where T: Clone
+where
+    T: Clone,
 {
     let mut vals = values
         .iter()
@@ -75,27 +98,6 @@ mod indexed_priority_queue_tests {
         );
     }
 
-    // #[test]
-    // fn left_and_right_childs_should_return_option_even_on_last_layer() {
-    //     let values = vec![9, 8, 8, 6, 1, 7, 2, 2, 2, 3, 4, 0];
-    //
-    //     let ipq = IndexedPriorityQueue2 {
-    //         vals: IndexedPriorityQueue2::set_vals(&values),
-    //     };
-    //
-    //     assert_eq!(ipq.left_child_of(4), Some(&3));
-    //     assert_eq!(ipq.right_child_of(4), Some(&4));
-    //
-    //     assert_eq!(ipq.left_child_of(5), Some(&0));
-    //     assert_eq!(ipq.right_child_of(5), None);
-    //
-    //     assert_eq!(ipq.left_child_of(7), None);
-    //     assert_eq!(ipq.right_child_of(7), None);
-    //
-    //     assert_eq!(ipq.left_child_of(12), None);
-    //     assert_eq!(ipq.right_child_of(12), None);
-    // }
-
     #[test]
     fn parent_node_index_should_return_parent_index_or_panic_if_out_bounds() {
         let values = vec![9, 8, 7, 6, 5, 1, 2, 2, 2, 3, 4, 0];
@@ -108,13 +110,7 @@ mod indexed_priority_queue_tests {
     }
 }
 
-trait IndexedPriorityQueue<T> {
-    fn left_child_of(&self, node_index:usize) -> Option<&T>;
-
-    fn right_child_of(&self, node_index:usize) -> Option<&T>;
-
-    fn number_of_layers(&self) -> usize;
-}
+trait IndexedPriorityQueue<T> {}
 
 struct MinIndexedPriorityQueue<T> {
     vals: Vec<Option<T>>,
@@ -122,43 +118,11 @@ struct MinIndexedPriorityQueue<T> {
     // inverse_map: Vec<usize>,
 }
 
-impl<T> IndexedPriorityQueue<T> for MinIndexedPriorityQueue<T>
-where T: Clone + PartialOrd
-{
-    fn left_child_of(&self, key_index: usize) -> Option<&T> {
-        let i = 2 * key_index + 1;
-        return if i < self.vals.len() {
-            self.vals[i].as_ref()
-        } else {
-            None
-        };
-    }
-
-    fn right_child_of(&self, key_index: usize) -> Option<&T> {
-        let i = 2 * key_index + 2;
-        return if i < self.vals.len() {
-            self.vals[i].as_ref()
-        } else {
-            None
-        };
-    }
-
-    fn number_of_layers(&self) -> usize {
-        let mut number_of_layers = 1;
-        let mut n = self.vals.len().next_power_of_two();
-
-        while n != 2 {
-            n /= 2;
-            number_of_layers += 1;
-        }
-
-        number_of_layers
-    }
-}
+impl<T> IndexedPriorityQueue<T> for MinIndexedPriorityQueue<T> where T: Clone + PartialOrd {}
 
 impl<T> MinIndexedPriorityQueue<T>
-    where
-        T: Clone + PartialOrd,
+where
+    T: Clone + PartialOrd,
 {
     fn new_min_ipq(values: &Vec<T>) -> Self {
         let mut ipq = Self {
@@ -187,18 +151,18 @@ impl<T> MinIndexedPriorityQueue<T>
 
         Range {
             start: 0,
-            end: self.number_of_layers(),
+            end: number_of_layers(&self.vals),
         }
-            .for_each(|_| {
-                while mib(&self.vals[pni], &self.vals[ni]) && ni != pni {
-                    self.vals.swap(pni, ni);
-                    ni = pni;
-                    pni = crate::parent_node_index(ni);
-                }
+        .for_each(|_| {
+            while mib(&self.vals[pni], &self.vals[ni]) && ni != pni {
+                self.vals.swap(pni, ni);
+                ni = pni;
+                pni = crate::parent_node_index(ni);
+            }
 
-                ni = edge_node_index;
-                pni = crate::parent_node_index(edge_node_index);
-            });
+            ni = edge_node_index;
+            pni = crate::parent_node_index(edge_node_index);
+        });
     }
 
     fn check_potential_min_heap_invariance_integrity_breach(
@@ -212,7 +176,8 @@ impl<T> MinIndexedPriorityQueue<T>
     }
 
     fn insert(&mut self, value: T) {
-        let does_it_break_heap_invariance = self.check_potential_min_heap_invariance_integrity_breach(Some(&value));
+        let does_it_break_heap_invariance =
+            self.check_potential_min_heap_invariance_integrity_breach(Some(&value));
 
         let nvi = last_some(&self.vals) + 1;
         self.vals[nvi] = Some(value);
@@ -225,7 +190,7 @@ impl<T> MinIndexedPriorityQueue<T>
 
 #[cfg(test)]
 mod min_indexed_pq_tests {
-    use crate::MinIndexedPriorityQueue;
+    use crate::{left_child, right_child, set_vals, MinIndexedPriorityQueue};
 
     #[test]
     fn check_min_heap_invariance_integrity_breach() {
@@ -296,6 +261,27 @@ mod min_indexed_pq_tests {
             ]
         );
     }
+
+    #[test]
+    fn left_and_right_childs_should_return_option_even_on_last_layer() {
+        let values = vec![9, 8, 8, 6, 1, 7, 2, 2, 2, 3, 4, 0];
+
+        let ipq = MinIndexedPriorityQueue {
+            vals: set_vals(&values),
+        };
+
+        assert_eq!(left_child(&ipq.vals, 4), Some(&3));
+        assert_eq!(right_child(&ipq.vals, 4), Some(&4));
+
+        assert_eq!(left_child(&ipq.vals, 5), Some(&0));
+        assert_eq!(right_child(&ipq.vals, 5), None);
+
+        assert_eq!(left_child(&ipq.vals, 7), None);
+        assert_eq!(right_child(&ipq.vals, 7), None);
+
+        assert_eq!(left_child(&ipq.vals, 12), None);
+        assert_eq!(right_child(&ipq.vals, 12), None);
+    }
 }
 
 struct MaxIndexedPriorityQueue<T> {
@@ -304,43 +290,11 @@ struct MaxIndexedPriorityQueue<T> {
     // inverse_map: Vec<usize>,
 }
 
-impl<T> IndexedPriorityQueue<T> for MaxIndexedPriorityQueue<T>
-    where T: Clone + PartialOrd
-{
-    fn left_child_of(&self, key_index: usize) -> Option<&T> {
-        let i = 2 * key_index + 1;
-        return if i < self.vals.len() {
-            self.vals[i].as_ref()
-        } else {
-            None
-        };
-    }
-
-    fn right_child_of(&self, key_index: usize) -> Option<&T> {
-        let i = 2 * key_index + 2;
-        return if i < self.vals.len() {
-            self.vals[i].as_ref()
-        } else {
-            None
-        };
-    }
-
-    fn number_of_layers(&self) -> usize {
-        let mut number_of_layers = 1;
-        let mut n = self.vals.len().next_power_of_two();
-
-        while n != 2 {
-            n /= 2;
-            number_of_layers += 1;
-        }
-
-        number_of_layers
-    }
-}
+impl<T> IndexedPriorityQueue<T> for MaxIndexedPriorityQueue<T> where T: Clone + PartialOrd {}
 
 impl<T> MaxIndexedPriorityQueue<T>
-    where
-        T: Clone + PartialOrd,
+where
+    T: Clone + PartialOrd,
 {
     fn new_max_ipq(values: &Vec<T>) -> Self {
         let mut ipq = Self {
@@ -369,18 +323,18 @@ impl<T> MaxIndexedPriorityQueue<T>
 
         Range {
             start: 0,
-            end: self.number_of_layers(),
+            end: number_of_layers(&self.vals),
         }
-            .for_each(|_| {
-                while mib(&self.vals[pni], &self.vals[ni]) && ni != pni {
-                    self.vals.swap(pni, ni);
-                    ni = pni;
-                    pni = crate::parent_node_index(ni);
-                }
+        .for_each(|_| {
+            while mib(&self.vals[pni], &self.vals[ni]) && ni != pni {
+                self.vals.swap(pni, ni);
+                ni = pni;
+                pni = crate::parent_node_index(ni);
+            }
 
-                ni = edge_node_index;
-                pni = crate::parent_node_index(edge_node_index);
-            });
+            ni = edge_node_index;
+            pni = crate::parent_node_index(edge_node_index);
+        });
     }
 
     fn check_potential_push_max_heap_invariance_integrity_breach(
