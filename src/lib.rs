@@ -1,5 +1,5 @@
-use std::ops::Range;
 use crate::run::{left_child, parent_node_index, set_inverse_map};
+use std::ops::Range;
 
 mod ipq;
 mod run;
@@ -7,14 +7,19 @@ mod run;
 trait PriorityQueue<T> {}
 
 struct IndexedPriorityQueue<'a, T> {
-    values: &'a Vec<T>,
+    values: &'a mut Vec<T>,
     position_map: Vec<Option<usize>>,
     inverse_map: Vec<Option<usize>>,
 }
 
 impl<'a, T> IndexedPriorityQueue<'a, T>
-where T: PartialOrd
+where
+    T: Clone + PartialOrd,
 {
+    fn position(&self, i: usize) -> usize {
+        self.position_map[i].unwrap()
+    }
+
     #[inline]
     fn inverse(&self, i: usize) -> usize {
         self.inverse_map[i].unwrap()
@@ -37,7 +42,6 @@ where T: PartialOrd
     }
 
     fn swim(&mut self, mut i: usize) {
-
         let parent = |x| parent_node_index(x);
         let mut pi = parent(i);
         while self.less(i, pi) {
@@ -67,7 +71,7 @@ where T: PartialOrd
             }
 
             index
-        }
+        };
     }
 
     fn sink(&mut self, mut i: usize) {
@@ -79,6 +83,49 @@ where T: PartialOrd
             j = self.min_child(i);
         }
     }
+
+    fn increase(&mut self, key_index: usize, value: T) {
+        //TODO: Add if exists and is_some check
+        if self.values[key_index] < value {
+            self.values[key_index] = value;
+            self.sink(self.position(key_index));
+        }
+    }
+
+    fn decrease(&mut self, key_index: usize, value: T) {
+        //TODO: Add if exists and is_some check
+        if value < self.values[key_index] {
+            self.values[key_index] = value;
+            self.swim(self.position(key_index))
+        }
+    }
+
+    fn update(&mut self, key_index: usize, value: T) -> T {
+        //TODO: Add if exists and is_some check
+        let i = self.position(key_index);
+        let old_value = self.values[key_index].clone();
+
+        self.values[key_index] = value;
+        self.sink(i);
+        self.swim(i);
+
+        old_value
+    }
+
+    fn delete(&mut self, key_index: usize) -> T {
+        let i = self.position(key_index);
+        let size = self.values.len() - 1;
+        self.swap(i, size);
+        self.sink(i);
+        self.swim(i);
+
+        let value = self.values[key_index].clone();
+        self.values.remove(key_index);
+        self.position_map[key_index] = None;
+        self.inverse_map[size] = None;
+
+        value
+    }
 }
 
 type MinIndexedPriorityQueue<'a, T> = IndexedPriorityQueue<'a, T>;
@@ -89,10 +136,11 @@ impl<'a, T> MinIndexedPriorityQueue<'a, T>
 where
     T: Clone + PartialOrd,
 {
-    fn new(values: &'a Vec<T>) ->  Self {
+    fn new(values: &'a mut Vec<T>) -> Self {
+        let inverse_map = set_inverse_map(values);
         let mut mipq = Self {
             values,
-            inverse_map: set_inverse_map(values),
+            inverse_map,
             position_map: vec![Some(0); 2],
         };
 
@@ -103,7 +151,9 @@ where
         };
         edge_layer_range.for_each(|edge_index| {
             // minimum heap invariance breach
-            let mib = |ni: usize, pni: usize| run::max_priority(&(mipq.values[ni]), &mipq.values[pni]) && ni != pni;
+            let mib = |ni: usize, pni: usize| {
+                run::max_priority(&(mipq.values[ni]), &mipq.values[pni]) && ni != pni
+            };
             let mut node_index = edge_index;
             let mut parent_node_index = run::parent_node_index(edge_index);
 
@@ -186,8 +236,8 @@ where
 
 #[cfg(test)]
 mod min_indexed_pq_tests {
-    use crate::MinIndexedPriorityQueue;
     use crate::run::{left_child, right_child, set_vals};
+    use crate::MinIndexedPriorityQueue;
 
     #[test]
     fn check_min_heap_invariance_integrity_breach() {
