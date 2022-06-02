@@ -20,6 +20,10 @@ where
         self.values.len()
     }
 
+    fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
     fn contains(&self, key_index: usize) -> bool {
         self.key_in_bounds_or_panic(key_index);
 
@@ -44,6 +48,13 @@ where
     #[inline]
     fn less(&self, i: usize, j: usize) -> bool {
         self.value(i) < self.value(j)
+    }
+
+    #[inline]
+    fn peek_min_key_index(&self) -> usize {
+        self.is_not_empty_or_panic();
+
+        self.inverse(0)
     }
 
     fn swap(&mut self, i: usize, j: usize) {
@@ -156,8 +167,16 @@ where
         value
     }
 
-    fn is_empty(&self) -> bool {
-        self.values.is_empty()
+    fn peek_min_value(&self) -> T {
+        self.values[self.peek_min_key_index()].clone()
+    }
+
+    fn poll_min_value(&mut self) -> T {
+        let min_value = self.peek_min_value();
+        let min_key_index = self.peek_min_key_index();
+        self.delete(min_key_index);
+
+        min_value
     }
 
     fn is_not_empty_or_panic(&self) {
@@ -276,18 +295,6 @@ where
         let pni = run::parent_node_index(next_value_index);
 
         !run::max_priority(&value_to_insert.unwrap().clone(), &self.values[pni])
-    }
-
-    fn insert(&mut self, value: T) {
-        let does_it_break_heap_invariance =
-            self.check_potential_min_heap_invariance_integrity_breach(Some(&value));
-
-        let nvi = run::last_some_index(&self.inverse_map) + 1;
-        // self.values.push(value);
-
-        // if does_it_break_heap_invariance {
-        //     self.fix_min_ipq_branch_heap_invariant(nvi);
-        // }
     }
 }
 
