@@ -16,6 +16,17 @@ impl<'a, T> IndexedPriorityQueue<'a, T>
 where
     T: Clone + PartialOrd,
 {
+    fn size(&self) -> usize {
+        self.values.len()
+    }
+
+    fn contains(&self, key_index: usize) -> bool {
+        self.key_in_bounds_or_panic(key_index);
+
+        self.position_map[key_index].is_some()
+    }
+
+    #[inline]
     fn position(&self, i: usize) -> usize {
         self.position_map[i].unwrap()
     }
@@ -84,6 +95,16 @@ where
         }
     }
 
+    fn insert(&mut self, key_index: usize, value: T) {
+        //TODO: Add value not null or panic check
+
+        let size = self.size();
+        self.position_map[key_index] = Some(size);
+        self.inverse_map[size] = Some(key_index);
+        self.values[key_index] = value;
+        self.swim(size);
+    }
+
     fn increase(&mut self, key_index: usize, value: T) {
         //TODO: Add if exists and is_some check
         if self.values[key_index] < value {
@@ -100,6 +121,11 @@ where
         }
     }
 
+    fn value_of(&self, key_index: usize) -> T {
+        //TODO: Add if exists check
+        self.values[key_index].clone()
+    }
+
     fn update(&mut self, key_index: usize, value: T) -> T {
         //TODO: Add if exists and is_some check
         let i = self.position(key_index);
@@ -113,8 +139,10 @@ where
     }
 
     fn delete(&mut self, key_index: usize) -> T {
+        //TODO: Add if exists check
+
         let i = self.position(key_index);
-        let size = self.values.len() - 1;
+        let size = self.size() - 1;
         self.swap(i, size);
         self.sink(i);
         self.swim(i);
@@ -125,6 +153,12 @@ where
         self.inverse_map[size] = None;
 
         value
+    }
+
+    fn key_in_bounds_or_panic(&self, key_index: usize) {
+        if key_index < 0 || key_index >= self.position_map.len() {
+            panic!("Key index out of bound; received: {}", key_index);
+        }
     }
 }
 
