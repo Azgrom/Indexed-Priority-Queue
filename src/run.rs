@@ -1,11 +1,13 @@
-pub fn max_priority<T>(value_to_insert: &Option<T>, inserted_parent_node_value: &Option<T>) -> bool
+use std::ops::Range;
+
+pub fn max_priority<T>(value_to_insert: &T, inserted_parent_node_value: &T) -> bool
 where
     T: PartialOrd,
 {
     Some(value_to_insert) >= Some(inserted_parent_node_value)
 }
 
-pub fn last_some<T>(vals: &Vec<Option<T>>) -> usize {
+pub fn last_some_index<T>(vals: &Vec<Option<T>>) -> usize {
     vals.iter().rposition(|x| x.is_some()).unwrap()
 }
 
@@ -27,6 +29,18 @@ pub fn parent_node_index(node_index: usize) -> usize {
         n if n % 2 == 0 => (n / 2) - 1,
         _ => (node_index - 1) / 2,
     };
+}
+
+pub fn set_inverse_map<T>(values: &Vec<T>) -> Vec<Option<usize>> {
+    let values_range = Range {
+        start: 0,
+        end: values.len()
+    };
+    let mut key_indexes = values_range.map(|ki| Some(ki)).collect::<Vec<Option<usize>>>();
+    let diff = values.len().next_power_of_two() - values.len();
+    key_indexes.append(&mut vec![None; diff]);
+
+    key_indexes
 }
 
 pub fn left_child<T>(vals: &Vec<Option<T>>, node_index: usize) -> Option<&T> {
