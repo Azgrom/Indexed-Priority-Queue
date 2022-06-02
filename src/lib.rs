@@ -96,7 +96,7 @@ where
     }
 
     fn insert(&mut self, key_index: usize, value: T) {
-        //TODO: Add value not null or panic check
+        self.key_already_exists_panic(key_index);
 
         let size = self.size();
         self.position_map[key_index] = Some(size);
@@ -106,7 +106,7 @@ where
     }
 
     fn increase(&mut self, key_index: usize, value: T) {
-        //TODO: Add if exists and is_some check
+        self.key_exists_or_panic(key_index);
         if self.values[key_index] < value {
             self.values[key_index] = value;
             self.sink(self.position(key_index));
@@ -114,7 +114,7 @@ where
     }
 
     fn decrease(&mut self, key_index: usize, value: T) {
-        //TODO: Add if exists and is_some check
+        self.key_exists_or_panic(key_index);
         if value < self.values[key_index] {
             self.values[key_index] = value;
             self.swim(self.position(key_index))
@@ -122,12 +122,13 @@ where
     }
 
     fn value_of(&self, key_index: usize) -> T {
-        //TODO: Add if exists check
+        self.key_exists_or_panic(key_index);
         self.values[key_index].clone()
     }
 
     fn update(&mut self, key_index: usize, value: T) -> T {
-        //TODO: Add if exists and is_some check
+        self.key_exists_or_panic(key_index);
+
         let i = self.position(key_index);
         let old_value = self.values[key_index].clone();
 
@@ -139,7 +140,7 @@ where
     }
 
     fn delete(&mut self, key_index: usize) -> T {
-        //TODO: Add if exists check
+        self.key_exists_or_panic(key_index);
 
         let i = self.position(key_index);
         let size = self.size() - 1;
@@ -153,6 +154,28 @@ where
         self.inverse_map[size] = None;
 
         value
+    }
+
+    fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    fn is_not_empty_or_panic(&self) {
+        if self.is_empty() {
+            panic!("Priority queue underflow");
+        }
+    }
+
+    fn key_already_exists_panic(&self, key_index: usize) {
+        if self.contains(key_index) {
+            panic!("Index already exists: received: {}", key_index);
+        }
+    }
+
+    fn key_exists_or_panic(&self, key_index: usize) {
+        if !self.contains(key_index) {
+            panic!("Index does not exist; received: {}", key_index);
+        }
     }
 
     fn key_in_bounds_or_panic(&self, key_index: usize) {
