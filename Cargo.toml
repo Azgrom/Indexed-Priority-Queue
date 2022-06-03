@@ -1,6 +1,12 @@
 [package]
-name = "indexed_priority_queue"
-version = "0.1.0"
+authors = ["Rafael Lúcio <rafaellucio@pm.me>"]
+description = "A Indexed Priority Queue library based on William Fiset's algorithm"
+categories = ["data-structures", "development-tools"]
 edition = "2021"
-
-[dependencies]
+keywords = ["binary", "heap", "priority", "queue"]
+license = "MIT"
+name = "indexed_priority_queue"
+readme = "README.md"
+repository = "https://github.com/Azgrom/Indexed-Priority-Queue"
+rust-version = "1.61"
+version = "0.1.0"

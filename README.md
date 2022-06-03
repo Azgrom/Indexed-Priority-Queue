@@ -1,0 +1,3 @@
+# A Indexed Priority Queue Library based on [William Fiset's](https://github.com/williamfiset/algorithms) algorithm
+
+This priority queue accepts any type that supports the [`Clone`](https://doc.rust-lang.org/std/clone/trait.Clone.html) and [`PartialOrd`](https://doc.rust-lang.org/std/cmp/trait.PartialOrd.html) traits. Or, in practical words, for who might use this library as FFI, it will work with any type of data that accepts being compared by the `<`, `<=`, `>` and `>=` operators. 
