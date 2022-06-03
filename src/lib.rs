@@ -17,6 +17,77 @@ struct MinIndexedPriorityQueue<'a, T> {
     inverse_map: Vec<Option<usize>>,
 }
 
+impl<'a, T> IndexedBinaryHeap for MinIndexedPriorityQueue<'a, T>
+    where
+        T: Clone + PartialOrd,
+{
+    fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    #[inline]
+    fn less(&self, i: usize, j: usize) -> bool {
+        // if self.inverse_map[i].is_none() {
+        //     return false
+        // }
+
+        self.value(i) < self.value(j)
+    }
+
+    fn size(&self) -> usize {
+        self.values.len()
+    }
+
+    fn swap(&mut self, i: usize, j: usize) {
+        self.position_map[self.inverse_map[j].unwrap()] = Some(i);
+        self.position_map[self.inverse_map[i].unwrap()] = Some(j);
+        self.inverse_map.swap(i, j);
+    }
+
+    fn swim(&mut self, mut i: usize) {
+        let parent = |x| parent_node_index(x);
+        let mut pi = parent(i);
+        while self.less(i, pi) {
+            self.swap(i, pi);
+            i = pi;
+            pi = parent(i);
+        }
+    }
+
+    fn sink(&mut self, mut i: usize) {
+        let mut j = self.min_child(i);
+
+        while j.is_some() && j != Some(self.values.len()) {
+            self.swap(i, j.unwrap());
+            i = j.unwrap();
+            j = self.min_child(i);
+        }
+    }
+
+    fn min_child(&self, mut i: usize) -> Option<usize> {
+        let from = 2 * i + 1;
+        let number_of_direct_childs_per_node = 2;
+        let to = from + number_of_direct_childs_per_node;
+        let mut index: Option<usize> = None;
+
+        return if let true = self.inverse_map.len() < to {
+            index
+        } else {
+            let mut j = from;
+
+            while j < to {
+                if self.less(j, i) {
+                    i = j;
+                    index = Some(i);
+                }
+                j += 1;
+            }
+
+            index
+        };
+    }
+}
+
 impl<'a, T> IndexedPriorityQueue<T> for MinIndexedPriorityQueue<'a, T>
 where
     T: Clone + PartialOrd,
@@ -119,73 +190,6 @@ where
     }
 }
 
-impl<'a, T> IndexedBinaryHeap for MinIndexedPriorityQueue<'a, T>
-where
-    T: Clone + PartialOrd,
-{
-    fn is_empty(&self) -> bool {
-        self.values.is_empty()
-    }
-
-    #[inline]
-    fn less(&self, i: usize, j: usize) -> bool {
-        self.value(i) < self.value(j)
-    }
-
-    fn size(&self) -> usize {
-        self.values.len()
-    }
-
-    fn swap(&mut self, i: usize, j: usize) {
-        self.position_map[self.inverse_map[j].unwrap()] = Some(i);
-        self.position_map[self.inverse_map[i].unwrap()] = Some(j);
-        self.inverse_map.swap(i, j);
-    }
-
-    fn swim(&mut self, mut i: usize) {
-        let parent = |x| parent_node_index(x);
-        let mut pi = parent(i);
-        while self.less(i, pi) {
-            self.swap(i, pi);
-            i = pi;
-            pi = parent(i);
-        }
-    }
-
-    fn sink(&mut self, mut i: usize) {
-        let mut j = self.min_child(i);
-
-        while j.is_some() {
-            self.swap(i, j.unwrap());
-            i = j.unwrap();
-            j = self.min_child(i);
-        }
-    }
-
-    fn min_child(&self, mut i: usize) -> Option<usize> {
-        let from = 2 * i + 1;
-        let number_of_direct_childs_per_node = 2;
-        let to = from + number_of_direct_childs_per_node;
-        let mut index: Option<usize> = None;
-
-        return if let true = self.inverse_map.len() < to {
-            index
-        } else {
-            let mut j = from;
-
-            while j < to {
-                if self.less(j, i) {
-                    i = j;
-                    index = Some(i);
-                }
-                j += 1;
-            }
-
-            index
-        };
-    }
-}
-
 impl<'a, T> MinIndexedPriorityQueue<'a, T>
 where
     T: Clone + PartialOrd,
@@ -279,8 +283,7 @@ where
 
 #[cfg(test)]
 mod min_indexed_pq_tests {
-    use crate::run::{left_child, right_child};
-    use crate::{IndexedPriorityQueue, MinIndexedPriorityQueue};
+    use crate::{IndexedBinaryHeap, IndexedPriorityQueue, MinIndexedPriorityQueue};
 
     #[test]
     fn min_ipq_should_successfully_create_a_binary_heap_from_pre_existent_vec() {
@@ -394,5 +397,17 @@ mod min_indexed_pq_tests {
 
         assert_eq!(ipq.left_child(12), None);
         assert_eq!(ipq.right_child(12), None);
+    }
+
+    #[test]
+    fn test() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        assert_eq!(ipq.poll_min_value(), 0);
+        assert_eq!(ipq.poll_min_value(), 1);
+        assert_eq!(ipq.poll_min_value(), 2);
+
+        ipq.insert(ipq.size(), -100);
+        assert_eq!(ipq.peek_min_value(), 1);
     }
 }
