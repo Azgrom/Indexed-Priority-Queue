@@ -1,29 +1,20 @@
-use crate::run::{left_child, parent_node_index, set_inverse_map};
+use crate::ipq::{IndexedBinaryHeap, IndexedPriorityQueue};
+use crate::run::{left_child, parent_node_index};
 use std::ops::Range;
 
 mod ipq;
 mod run;
 
-trait PriorityQueue<T> {}
-
-struct IndexedPriorityQueue<'a, T> {
+struct MinIndexedPriorityQueue<'a, T> {
     values: &'a mut Vec<T>,
     position_map: Vec<Option<usize>>,
     inverse_map: Vec<Option<usize>>,
 }
 
-impl<'a, T> IndexedPriorityQueue<'a, T>
+impl<'a, T> IndexedPriorityQueue<T> for MinIndexedPriorityQueue<'a, T>
 where
     T: Clone + PartialOrd,
 {
-    fn size(&self) -> usize {
-        self.values.len()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.values.is_empty()
-    }
-
     fn contains(&self, key_index: usize) -> bool {
         self.key_in_bounds_or_panic(key_index);
 
@@ -31,18 +22,103 @@ where
     }
 
     #[inline]
-    fn position(&self, i: usize) -> usize {
-        self.position_map[i].unwrap()
+    fn peek_min_key_index(&self) -> usize {
+        self.is_not_empty_or_panic();
+
+        self.inverse(0)
     }
 
-    #[inline]
-    fn inverse(&self, i: usize) -> usize {
-        self.inverse_map[i].unwrap()
+    fn peek_min_value(&self) -> T {
+        self.values[self.peek_min_key_index()].clone()
     }
 
-    #[inline]
-    fn value(&self, i: usize) -> &T {
-        &self.values[self.inverse(i)]
+    fn value_of(&self, key_index: usize) -> T {
+        self.key_exists_or_panic(key_index);
+        self.values[key_index].clone()
+    }
+
+    fn insert(&mut self, key_index: usize, value: T) {
+        self.key_already_exists_panic(key_index);
+
+        let size = self.size();
+        self.position_map[key_index] = Some(size);
+        self.inverse_map[size] = Some(key_index);
+        if key_index < self.values.len() {
+            self.values.insert(key_index, value);
+        } else {
+            self.values.push(value);
+        }
+        self.swim(size);
+    }
+
+    fn delete(&mut self, key_index: usize) -> T {
+        self.key_exists_or_panic(key_index);
+
+        let i = self.position(key_index);
+        let size = self.size() - 1;
+        self.swap(i, size);
+        self.sink(i);
+        self.swim(i);
+
+        let value = self.values[key_index].clone();
+        self.values.remove(key_index);
+        self.position_map[key_index] = None;
+        self.inverse_map[size] = None;
+
+        value
+    }
+
+    fn increase(&mut self, key_index: usize, value: T) {
+        self.key_exists_or_panic(key_index);
+        if self.values[key_index] < value {
+            self.values[key_index] = value;
+            self.sink(self.position(key_index));
+        }
+    }
+
+    fn decrease(&mut self, key_index: usize, value: T) {
+        self.key_exists_or_panic(key_index);
+        if value < self.values[key_index] {
+            self.values[key_index] = value;
+            self.swim(self.position(key_index))
+        }
+    }
+
+    fn poll_min_key_index(&mut self) -> usize {
+        let min_key_index = self.peek_min_key_index();
+        self.delete(min_key_index);
+
+        min_key_index
+    }
+
+    fn poll_min_value(&mut self) -> T {
+        let min_value = self.peek_min_value();
+        let min_key_index = self.peek_min_key_index();
+        self.delete(min_key_index);
+
+        min_value
+    }
+
+    fn update(&mut self, key_index: usize, value: T) -> T {
+        self.key_exists_or_panic(key_index);
+
+        let i = self.position(key_index);
+        let old_value = self.values[key_index].clone();
+
+        self.values[key_index] = value;
+        self.sink(i);
+        self.swim(i);
+
+        old_value
+    }
+}
+
+impl<'a, T> IndexedBinaryHeap for MinIndexedPriorityQueue<'a, T>
+where
+    T: Clone + PartialOrd,
+{
+    fn is_empty(&self) -> bool {
+        self.values.is_empty()
     }
 
     #[inline]
@@ -50,11 +126,8 @@ where
         self.value(i) < self.value(j)
     }
 
-    #[inline]
-    fn peek_min_key_index(&self) -> usize {
-        self.is_not_empty_or_panic();
-
-        self.inverse(0)
+    fn size(&self) -> usize {
+        self.values.len()
     }
 
     fn swap(&mut self, i: usize, j: usize) {
@@ -70,6 +143,16 @@ where
             self.swap(i, pi);
             i = pi;
             pi = parent(i);
+        }
+    }
+
+    fn sink(&mut self, mut i: usize) {
+        let mut j = self.min_child(i);
+
+        while j.is_some() {
+            self.swap(i, j.unwrap());
+            i = j.unwrap();
+            j = self.min_child(i);
         }
     }
 
@@ -95,88 +178,54 @@ where
             index
         };
     }
+}
 
-    fn sink(&mut self, mut i: usize) {
-        let mut j = self.min_child(i);
+impl<'a, T> MinIndexedPriorityQueue<'a, T>
+where
+    T: Clone + PartialOrd,
+{
+    #[inline]
+    fn position(&self, i: usize) -> usize {
+        self.position_map[i].unwrap()
+    }
 
-        while j.is_some() {
-            self.swap(i, j.unwrap());
-            i = j.unwrap();
-            j = self.min_child(i);
+    #[inline]
+    fn inverse(&self, i: usize) -> usize {
+        self.inverse_map[i].unwrap()
+    }
+
+    #[inline]
+    fn value(&self, i: usize) -> &T {
+        &self.values[self.inverse(i)]
+    }
+
+    fn from_existent_vec(values: &'a mut Vec<T>) -> Self {
+        let npt = values.len().next_power_of_two();
+        let mut values_map = vec![None; npt];
+        Range {
+            start: 0,
+            end: values.len(),
         }
+        .for_each(|i| values_map[i] = Some(i));
+        let position_map = values_map.clone();
+        let inverse_map = values_map;
+
+        let mut min_ipq = Self {
+            values,
+            position_map,
+            inverse_map,
+        };
+        min_ipq.fix_heap_invariant();
+
+        min_ipq
     }
 
-    fn insert(&mut self, key_index: usize, value: T) {
-        self.key_already_exists_panic(key_index);
-
-        let size = self.size();
-        self.position_map[key_index] = Some(size);
-        self.inverse_map[size] = Some(key_index);
-        self.values[key_index] = value;
-        self.swim(size);
-    }
-
-    fn increase(&mut self, key_index: usize, value: T) {
-        self.key_exists_or_panic(key_index);
-        if self.values[key_index] < value {
-            self.values[key_index] = value;
-            self.sink(self.position(key_index));
-        }
-    }
-
-    fn decrease(&mut self, key_index: usize, value: T) {
-        self.key_exists_or_panic(key_index);
-        if value < self.values[key_index] {
-            self.values[key_index] = value;
-            self.swim(self.position(key_index))
-        }
-    }
-
-    fn value_of(&self, key_index: usize) -> T {
-        self.key_exists_or_panic(key_index);
-        self.values[key_index].clone()
-    }
-
-    fn update(&mut self, key_index: usize, value: T) -> T {
-        self.key_exists_or_panic(key_index);
-
-        let i = self.position(key_index);
-        let old_value = self.values[key_index].clone();
-
-        self.values[key_index] = value;
-        self.sink(i);
-        self.swim(i);
-
-        old_value
-    }
-
-    fn delete(&mut self, key_index: usize) -> T {
-        self.key_exists_or_panic(key_index);
-
-        let i = self.position(key_index);
-        let size = self.size() - 1;
-        self.swap(i, size);
-        self.sink(i);
-        self.swim(i);
-
-        let value = self.values[key_index].clone();
-        self.values.remove(key_index);
-        self.position_map[key_index] = None;
-        self.inverse_map[size] = None;
-
-        value
-    }
-
-    fn peek_min_value(&self) -> T {
-        self.values[self.peek_min_key_index()].clone()
-    }
-
-    fn poll_min_value(&mut self) -> T {
-        let min_value = self.peek_min_value();
-        let min_key_index = self.peek_min_key_index();
-        self.delete(min_key_index);
-
-        min_value
+    fn fix_heap_invariant(&mut self) {
+        let edge_layer_range = Range {
+            start: (self.inverse_map.len() / 2) - 1,
+            end: self.values.len(),
+        };
+        edge_layer_range.for_each(|i| self.swim(i));
     }
 
     fn is_not_empty_or_panic(&self) {
@@ -198,144 +247,105 @@ where
     }
 
     fn key_in_bounds_or_panic(&self, key_index: usize) {
-        if key_index < 0 || key_index >= self.position_map.len() {
+        if key_index >= self.position_map.len() {
             panic!("Key index out of bound; received: {}", key_index);
         }
     }
 }
 
-type MinIndexedPriorityQueue<'a, T> = IndexedPriorityQueue<'a, T>;
-
-impl<'a, T> PriorityQueue<T> for MinIndexedPriorityQueue<'a, T> where T: Clone + PartialOrd {}
-
-impl<'a, T> MinIndexedPriorityQueue<'a, T>
-where
-    T: Clone + PartialOrd,
-{
-    fn new(values: &'a mut Vec<T>) -> Self {
-        let inverse_map = set_inverse_map(values);
-        let mut mipq = Self {
-            values,
-            inverse_map,
-            position_map: vec![Some(0); 2],
-        };
-
-        let last_node_index = run::last_some_index(&mipq.inverse_map);
-        let edge_layer_range = Range {
-            start: (mipq.inverse_map.len() / 2) - 1,
-            end: last_node_index - 1,
-        };
-        edge_layer_range.for_each(|edge_index| {
-            // minimum heap invariance breach
-            let mib = |ni: usize, pni: usize| {
-                run::max_priority(&(mipq.values[ni]), &mipq.values[pni]) && ni != pni
-            };
-            let mut node_index = edge_index;
-            let mut parent_node_index = run::parent_node_index(edge_index);
-
-            let mut layer = run::number_of_layers(&mipq.inverse_map);
-            while layer != 0 {
-                layer -= 1;
-
-                while mib(parent_node_index, node_index) {
-                    mipq.inverse_map.swap(node_index, parent_node_index);
-                }
-            }
-        });
-
-        mipq
-    }
-
-    // fn new_min_ipq(values: &Vec<T>) -> Self {
-    //     let mut ipq = Self {
-    //         values: run::set_vals(values),
-    //         // position_map:
-    //         // inverse_map:
-    //     };
-    //     let next_node_index = run::last_some_index(&ipq.values) + 1;
-    //     let edge_layer_index_range = Range {
-    //         start: (ipq.values.len() / 2) - 1,
-    //         end: next_node_index,
-    //     };
-    //
-    //     edge_layer_index_range
-    //         .for_each(|edge_index| ipq.fix_min_ipq_branch_heap_invariant(edge_index));
-    //
-    //     ipq
-    // }
-
-    // fn fix_min_ipq_branch_heap_invariant(&mut self, edge_node_index: usize) {
-    //     let mut ni = edge_node_index;
-    //     let mut pni = run::parent_node_index(edge_node_index);
-    //
-    //     // minimum heap invariance breach
-    //     let mib = |a: &T, b: &T| run::max_priority(a, b);
-    //
-    //     Range {
-    //         start: 0,
-    //         end: run::number_of_layers(&self.inverse_map),
-    //     }
-    //     .for_each(|_| {
-    //         while mib(&self.values[pni], &self.values[ni]) && ni != pni {
-    //             self.values.swap(pni, ni);
-    //             ni = pni;
-    //             pni = run::parent_node_index(ni);
-    //         }
-    //
-    //         ni = edge_node_index;
-    //         pni = run::parent_node_index(edge_node_index);
-    //     });
-    // }
-
-    fn check_potential_min_heap_invariance_integrity_breach(
-        &self,
-        value_to_insert: Option<&T>,
-    ) -> bool {
-        let next_value_index = run::last_some_index(&self.inverse_map) + 1;
-        let pni = run::parent_node_index(next_value_index);
-
-        !run::max_priority(&value_to_insert.unwrap().clone(), &self.values[pni])
-    }
-}
-
 #[cfg(test)]
 mod min_indexed_pq_tests {
-    use crate::run::{left_child, right_child, set_vals};
-    use crate::MinIndexedPriorityQueue;
+    use crate::run::{left_child, right_child};
+    use crate::{IndexedPriorityQueue, MinIndexedPriorityQueue};
 
     #[test]
-    fn check_min_heap_invariance_integrity_breach() {
-        let values = vec![9, 8, 7, 6, 5, 1, 2, 2, 2, 3, 4, 0];
-        let min_ipq = MinIndexedPriorityQueue::new_min_ipq(&values);
-
-        let value_to_insert = Some(&8);
-        let breached_heap_invariance =
-            min_ipq.check_potential_min_heap_invariance_integrity_breach(value_to_insert);
-
-        assert!(!breached_heap_invariance);
-    }
-
-    #[test]
-    fn min_indexed_pq_should_sort_binary_heap_correctly() {
-        let values = vec![9, 8, 7, 6, 5, 1, 2, 2, 2, 3, 4, 0];
-        let min_ipq = MinIndexedPriorityQueue::new_min_ipq(&values);
+    fn min_ipq_should_successfully_create_a_binary_heap_from_pre_existent_vec() {
+        let mut values: Vec<i32> = vec![9, 8, 7, 6, 5, 1, 2, 2, 2, 3, 4, 0];
+        let v_len = values.len();
+        let mut min_ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
 
         assert_eq!(
-            min_ipq.values,
+            min_ipq.position_map,
             [
-                Some(0),
-                Some(2),
-                Some(1),
-                Some(6),
                 Some(3),
-                Some(2),
-                Some(2),
-                Some(9),
                 Some(8),
                 Some(5),
-                Some(4),
                 Some(7),
+                Some(9),
+                Some(11),
+                Some(6),
+                Some(2),
+                Some(1),
+                Some(4),
+                Some(10),
+                Some(0),
                 None,
+                None,
+                None,
+                None
+            ]
+        );
+        assert_eq!(
+            min_ipq.inverse_map,
+            [
+                Some(11),
+                Some(8),
+                Some(7),
+                Some(0),
+                Some(9),
+                Some(2),
+                Some(6),
+                Some(3),
+                Some(1),
+                Some(4),
+                Some(10),
+                Some(5),
+                None,
+                None,
+                None,
+                None
+            ]
+        );
+
+        min_ipq.insert(v_len, -100);
+
+        assert_eq!(
+            min_ipq.position_map,
+            [
+                Some(3),
+                Some(8),
+                Some(12),
+                Some(7),
+                Some(9),
+                Some(11),
+                Some(6),
+                Some(5),
+                Some(1),
+                Some(4),
+                Some(10),
+                Some(2),
+                Some(0),
+                None,
+                None,
+                None
+            ]
+        );
+        assert_eq!(
+            min_ipq.inverse_map,
+            [
+                Some(12),
+                Some(8),
+                Some(11),
+                Some(0),
+                Some(9),
+                Some(7),
+                Some(6),
+                Some(3),
+                Some(1),
+                Some(4),
+                Some(10),
+                Some(5),
+                Some(2),
                 None,
                 None,
                 None
@@ -344,162 +354,21 @@ mod min_indexed_pq_tests {
     }
 
     #[test]
-    fn min_ipq_should_reorder_heap_prioritizing_minimum_value() {
-        let values = vec![9, 8, 7, 6, 5, 1, 2, 2, 2, 3, 4, 0];
-        let mut min_ipq = MinIndexedPriorityQueue::new_min_ipq(&values);
-        let to_insert_value = -1;
-        min_ipq.insert(to_insert_value);
+    fn left_and_right_childs_should_return_option_even_on_last_layer() {
+        let mut values = vec![9, 8, 8, 6, 1, 7, 2, 2, 2, 3, 4, 0];
 
-        assert_eq!(
-            min_ipq.values,
-            [
-                Some(-1),
-                Some(2),
-                Some(0),
-                Some(6),
-                Some(3),
-                Some(1),
-                Some(2),
-                Some(9),
-                Some(8),
-                Some(5),
-                Some(4),
-                Some(7),
-                Some(2),
-                None,
-                None,
-                None
-            ]
-        );
-    }
+        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
 
-    // #[test]
-    // fn left_and_right_childs_should_return_option_even_on_last_layer() {
-    //     let values = vec![9, 8, 8, 6, 1, 7, 2, 2, 2, 3, 4, 0];
-    //
-    //     let ipq = MinIndexedPriorityQueue {
-    //         values: set_vals(&values),
-    //     };
-    //
-    //     assert_eq!(left_child(&ipq.values, 4), Some(&3));
-    //     assert_eq!(right_child(&ipq.values, 4), Some(&4));
-    //
-    //     assert_eq!(left_child(&ipq.values, 5), Some(&0));
-    //     assert_eq!(right_child(&ipq.values, 5), None);
-    //
-    //     assert_eq!(left_child(&ipq.values, 7), None);
-    //     assert_eq!(right_child(&ipq.values, 7), None);
-    //
-    //     assert_eq!(left_child(&ipq.values, 12), None);
-    //     assert_eq!(right_child(&ipq.values, 12), None);
-    // }
-}
+        assert_eq!(left_child(&ipq.values, 4), Some(&3));
+        assert_eq!(right_child(&ipq.values, 4), Some(&4));
 
-struct MaxIndexedPriorityQueue<T> {
-    vals: Vec<Option<T>>,
-    // position_map: Vec<usize>,
-    // inverse_map: Vec<usize>,
-}
+        assert_eq!(left_child(&ipq.values, 5), Some(&0));
+        assert_eq!(right_child(&ipq.values, 5), None);
 
-impl<T> PriorityQueue<T> for MaxIndexedPriorityQueue<T> where T: Clone + PartialOrd {}
+        assert_eq!(left_child(&ipq.values, 7), None);
+        assert_eq!(right_child(&ipq.values, 7), None);
 
-impl<T> MaxIndexedPriorityQueue<T>
-where
-    T: Clone + PartialOrd,
-{
-    fn new_max_ipq(values: &Vec<T>) -> Self {
-        let mut ipq = Self {
-            vals: run::set_vals(values),
-            // position_map:
-            // inverse_map:
-        };
-        let next_node_index = run::last_some_index(&ipq.vals) + 1;
-        let edge_layer_index_range = Range {
-            start: (ipq.vals.len() / 2) - 1,
-            end: next_node_index,
-        };
-
-        edge_layer_index_range
-            .for_each(|edge_index| ipq.fix_max_ipq_branch_heap_invariant(edge_index));
-
-        ipq
-    }
-
-    fn fix_max_ipq_branch_heap_invariant(&mut self, edge_node_index: usize) {
-        let mut ni = edge_node_index;
-        let mut pni = run::parent_node_index(edge_node_index);
-
-        // maximum heap invariance breach
-        let mib = |a: &Option<T>, b: &Option<T>| !run::max_priority(a, b);
-
-        Range {
-            start: 0,
-            end: run::number_of_layers(&self.vals),
-        }
-        .for_each(|_| {
-            while mib(&self.vals[pni], &self.vals[ni]) && ni != pni {
-                self.vals.swap(pni, ni);
-                ni = pni;
-                pni = run::parent_node_index(ni);
-            }
-
-            ni = edge_node_index;
-            pni = run::parent_node_index(edge_node_index);
-        });
-    }
-
-    fn check_potential_push_max_heap_invariance_integrity_breach(
-        &self,
-        value_to_insert: &Option<T>,
-    ) -> bool {
-        let next_value_index = run::last_some_index(&self.vals) + 1;
-        let pni = run::parent_node_index(next_value_index);
-
-        run::max_priority(&value_to_insert, &&self.vals[pni])
-    }
-}
-
-#[cfg(test)]
-mod max_indexed_pq_tests {
-    use crate::MaxIndexedPriorityQueue;
-
-    #[test]
-    fn check_max_heap_invariance_integrity_breach() {
-        let values = vec![9, 8, 7, 6, 5, 1, 2, 2, 2, 3, 4, 0];
-        let ipq = MaxIndexedPriorityQueue::new_max_ipq(&values);
-
-        let value_to_insert = Some(8);
-        let breached_heap_invariance =
-            ipq.check_potential_push_max_heap_invariance_integrity_breach(&value_to_insert);
-
-        assert!(breached_heap_invariance);
-    }
-
-    #[test]
-    fn test() {
-        let values = vec![0, 2, 1, 6, 3, 2, 2, 9, 8, 5, 4, 7];
-        let ipq = MaxIndexedPriorityQueue::new_max_ipq(&values);
-
-        assert_eq!(
-            ipq.vals,
-            [
-                Some(9),
-                Some(8),
-                Some(7),
-                Some(6),
-                Some(5),
-                Some(2),
-                Some(2),
-                Some(0),
-                Some(2),
-                Some(3),
-                Some(4),
-                Some(1),
-                None,
-                None,
-                None,
-                None
-            ]
-        );
+        assert_eq!(left_child(&ipq.values, 12), None);
+        assert_eq!(right_child(&ipq.values, 12), None);
     }
 }
