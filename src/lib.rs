@@ -1,9 +1,15 @@
 use crate::ipq::{IndexedBinaryHeap, IndexedPriorityQueue};
-use crate::run::{left_child, parent_node_index};
 use std::ops::Range;
 
 mod ipq;
-mod run;
+
+fn parent_node_index(node_index: usize) -> usize {
+    return match node_index {
+        0 => 0,
+        n if n % 2 == 0 => (n / 2) - 1,
+        _ => (node_index - 1) / 2,
+    };
+}
 
 struct MinIndexedPriorityQueue<'a, T> {
     values: &'a mut Vec<T>,
@@ -228,6 +234,24 @@ where
         edge_layer_range.for_each(|i| self.swim(i));
     }
 
+    pub fn left_child(&self, node_index: usize) -> Option<&T> {
+        let i = 2 * node_index + 1;
+        return if i < self.values.len() {
+            Some(&self.values[self.inverse(i)])
+        } else {
+            None
+        };
+    }
+
+    pub fn right_child(&self, node_index: usize) -> Option<&T> {
+        let i = 2 * node_index + 2;
+        return if i < self.values.len() {
+            Some(&self.values[self.inverse(i)])
+        } else {
+            None
+        };
+    }
+
     fn is_not_empty_or_panic(&self) {
         if self.is_empty() {
             panic!("Priority queue underflow");
@@ -359,16 +383,16 @@ mod min_indexed_pq_tests {
 
         let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
 
-        assert_eq!(left_child(&ipq.values, 4), Some(&3));
-        assert_eq!(right_child(&ipq.values, 4), Some(&4));
+        assert_eq!(ipq.left_child(4), Some(&3));
+        assert_eq!(ipq.right_child(4), Some(&4));
 
-        assert_eq!(left_child(&ipq.values, 5), Some(&0));
-        assert_eq!(right_child(&ipq.values, 5), None);
+        assert_eq!(ipq.left_child(5), Some(&7));
+        assert_eq!(ipq.right_child(5), None);
 
-        assert_eq!(left_child(&ipq.values, 7), None);
-        assert_eq!(right_child(&ipq.values, 7), None);
+        assert_eq!(ipq.left_child(7), None);
+        assert_eq!(ipq.right_child(7), None);
 
-        assert_eq!(left_child(&ipq.values, 12), None);
-        assert_eq!(right_child(&ipq.values, 12), None);
+        assert_eq!(ipq.left_child(12), None);
+        assert_eq!(ipq.right_child(12), None);
     }
 }
