@@ -27,10 +27,6 @@ impl<'a, T> IndexedBinaryHeap for MinIndexedPriorityQueue<'a, T>
 
     #[inline]
     fn less(&self, i: usize, j: usize) -> bool {
-        // if self.inverse_map[i].is_none() {
-        //     return false
-        // }
-
         self.value(i) < self.value(j)
     }
 
@@ -65,15 +61,15 @@ impl<'a, T> IndexedBinaryHeap for MinIndexedPriorityQueue<'a, T>
     }
 
     fn min_child(&self, mut i: usize) -> Option<usize> {
-        let from = 2 * i + 1;
         let number_of_direct_childs_per_node = 2;
+        let from = number_of_direct_childs_per_node * i + 1;
         let to = from + number_of_direct_childs_per_node;
-        let mut index: Option<usize> = None;
 
-        return if let true = self.inverse_map.len() < to {
-            index
+        return if let true = self.size() <= to {
+            None
         } else {
             let mut j = from;
+            let mut index: Option<usize> = None;
 
             while j < to {
                 if self.less(j, i) {
@@ -133,6 +129,19 @@ where
 
         let i = self.position(key_index);
         let size = self.size() - 1;
+
+        if self.inverse(size) == self.position(size) {
+            let value = self.values[key_index].clone();
+            self.values.remove(key_index);
+            self.position_map[size] = None;
+            self.inverse_map[size] = None;
+
+            self.sink(i);
+            self.swim(i);
+
+            return value;
+        }
+
         self.swap(i, size);
         self.sink(i);
         self.swim(i);
@@ -400,7 +409,7 @@ mod min_indexed_pq_tests {
     }
 
     #[test]
-    fn test() {
+    fn poll_insert_peek_methods_should_run_without_breaking_data_structure() {
         let mut values = vec![1, 2, 2, 2, 0];
         let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
         assert_eq!(ipq.poll_min_value(), 0);
@@ -408,6 +417,6 @@ mod min_indexed_pq_tests {
         assert_eq!(ipq.poll_min_value(), 2);
 
         ipq.insert(ipq.size(), -100);
-        assert_eq!(ipq.peek_min_value(), 1);
+        assert_eq!(ipq.peek_min_value(), -100);
     }
 }
