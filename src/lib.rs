@@ -203,6 +203,27 @@ impl<'a, T> MinIndexedPriorityQueue<'a, T>
 where
     T: Clone + PartialOrd,
 {
+    pub fn from_existent_vec(values: &'a mut Vec<T>) -> Self {
+        let npt = values.len().next_power_of_two();
+        let mut values_map = vec![None; npt];
+        Range {
+            start: 0,
+            end: values.len(),
+        }
+            .for_each(|i| values_map[i] = Some(i));
+        let position_map = values_map.clone();
+        let inverse_map = values_map;
+
+        let mut min_ipq = Self {
+            values,
+            position_map,
+            inverse_map,
+        };
+        min_ipq.fix_heap_invariant();
+
+        min_ipq
+    }
+
     #[inline]
     fn position(&self, i: usize) -> usize {
         self.position_map[i].unwrap()
@@ -216,27 +237,6 @@ where
     #[inline]
     fn value(&self, i: usize) -> &T {
         &self.values[self.inverse(i)]
-    }
-
-    fn from_existent_vec(values: &'a mut Vec<T>) -> Self {
-        let npt = values.len().next_power_of_two();
-        let mut values_map = vec![None; npt];
-        Range {
-            start: 0,
-            end: values.len(),
-        }
-        .for_each(|i| values_map[i] = Some(i));
-        let position_map = values_map.clone();
-        let inverse_map = values_map;
-
-        let mut min_ipq = Self {
-            values,
-            position_map,
-            inverse_map,
-        };
-        min_ipq.fix_heap_invariant();
-
-        min_ipq
     }
 
     fn fix_heap_invariant(&mut self) {
