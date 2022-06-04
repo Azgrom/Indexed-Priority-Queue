@@ -1,7 +1,7 @@
 use crate::ipq::{IndexedBinaryHeap, IndexedPriorityQueue};
 use std::ops::Range;
 
-mod ipq;
+pub mod ipq;
 
 fn parent_node_index(node_index: usize) -> usize {
     return match node_index {
