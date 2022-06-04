@@ -11,7 +11,7 @@ fn parent_node_index(node_index: usize) -> usize {
     };
 }
 
-struct MinIndexedPriorityQueue<'a, T> {
+pub struct MinIndexedPriorityQueue<'a, T> {
     values: &'a mut Vec<T>,
     position_map: Vec<Option<usize>>,
     inverse_map: Vec<Option<usize>>,
