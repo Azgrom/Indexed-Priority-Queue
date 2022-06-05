@@ -482,4 +482,31 @@ mod min_indexed_pq_tests {
         assert_eq!(ipq.inverse_map, im);
         assert_eq!(ipq.position_map, pm);
     }
+
+    #[test]
+    #[should_panic]
+    fn invalid_key_index_should_panic_insert() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        ipq.insert(ipq.size() + 1, -1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_key_index_should_provide_invalid_inverse_map_as_key() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        ipq.value(5);
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_key_index_should_trigger_exist_key_panic() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        ipq.value_of(5);
+    }
 }
