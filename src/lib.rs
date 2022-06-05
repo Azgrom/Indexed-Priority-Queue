@@ -18,8 +18,8 @@ pub struct MinIndexedPriorityQueue<'a, T> {
 }
 
 impl<'a, T> IndexedBinaryHeap for MinIndexedPriorityQueue<'a, T>
-    where
-        T: Clone + PartialOrd,
+where
+    T: Clone + PartialOrd,
 {
     fn is_empty(&self) -> bool {
         self.values.is_empty()
@@ -111,6 +111,7 @@ where
     }
 
     fn insert(&mut self, key_index: usize, value: T) {
+        self.key_implies_expanding_need(key_index);
         self.key_already_exists_panic(key_index);
 
         let size = self.size();
@@ -210,7 +211,7 @@ where
             start: 0,
             end: values.len(),
         }
-            .for_each(|i| values_map[i] = Some(i));
+        .for_each(|i| values_map[i] = Some(i));
         let position_map = values_map.clone();
         let inverse_map = values_map;
 
@@ -265,6 +266,17 @@ where
         };
     }
 
+    fn key_implies_expanding_need(&mut self, key_index: usize) {
+        if key_index >= self.position_map.len() && key_index == self.values.len() {
+            let pm_len = self.position_map.len();
+            let extra_len = (pm_len + 1).next_power_of_two() - pm_len;
+
+            let mut mapping_expansion = vec![None; extra_len];
+            self.position_map.append(&mut mapping_expansion.clone());
+            self.inverse_map.append(&mut mapping_expansion);
+        }
+    }
+
     fn is_not_empty_or_panic(&self) {
         if self.is_empty() {
             panic!("Priority queue underflow");
@@ -285,7 +297,10 @@ where
 
     fn key_in_bounds_or_panic(&self, key_index: usize) {
         if key_index >= self.position_map.len() {
-            panic!("Key index out of bound; received: {}", key_index);
+            panic!(
+                "Key index way off expanding capacity/necessity; received: {}",
+                key_index
+            );
         }
     }
 }
@@ -418,5 +433,53 @@ mod min_indexed_pq_tests {
 
         ipq.insert(ipq.size(), -100);
         assert_eq!(ipq.peek_min_value(), -100);
+    }
+
+    #[test]
+    fn insert_should_expand_pq_mapping_if_key_index_is_in_correct_interval() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        ipq.insert(ipq.size(), 3);
+        ipq.insert(ipq.size(), 4);
+        ipq.insert(ipq.size(), 5);
+        ipq.insert(ipq.size(), 6);
+
+        let values_len = ipq.size();
+        let nones_len = ipq.inverse_map.len() - values_len;
+        let nones = vec![None; nones_len];
+
+        let mut pm = vec![
+            Some(1),
+            Some(4),
+            Some(2),
+            Some(3),
+            Some(0),
+            Some(5),
+            Some(6),
+            Some(7),
+            Some(8),
+        ];
+        let mut im = vec![
+            Some(4),
+            Some(0),
+            Some(2),
+            Some(3),
+            Some(1),
+            Some(5),
+            Some(6),
+            Some(7),
+            Some(8),
+        ];
+        pm.append(&mut nones.clone());
+        im.append(&mut nones.clone());
+
+        assert_eq!(values_len, 9);
+        assert_eq!(ipq.inverse_map.len(), 16);
+        assert_eq!(ipq.position_map.len(), 16);
+
+        assert_eq!(ipq.values, &mut [1, 2, 2, 2, 0, 3, 4, 5, 6]);
+        assert_eq!(ipq.inverse_map, im);
+        assert_eq!(ipq.position_map, pm);
     }
 }
