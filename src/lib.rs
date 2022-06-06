@@ -30,6 +30,29 @@ where
         self.value(i) < self.value(j)
     }
 
+    fn min_child(&self, mut i: usize) -> Option<usize> {
+        let number_of_direct_childs_per_node = 2;
+        let from = number_of_direct_childs_per_node * i + 1;
+        let to = from + number_of_direct_childs_per_node;
+
+        return if let true = self.size() <= to {
+            None
+        } else {
+            let mut j = from;
+            let mut index: Option<usize> = None;
+
+            while j < to {
+                if self.less(j, i) {
+                    i = j;
+                    index = Some(i);
+                }
+                j += 1;
+            }
+
+            index
+        };
+    }
+
     fn size(&self) -> usize {
         self.values.len()
     }
@@ -59,72 +82,12 @@ where
             j = self.min_child(i);
         }
     }
-
-    fn min_child(&self, mut i: usize) -> Option<usize> {
-        let number_of_direct_childs_per_node = 2;
-        let from = number_of_direct_childs_per_node * i + 1;
-        let to = from + number_of_direct_childs_per_node;
-
-        return if let true = self.size() <= to {
-            None
-        } else {
-            let mut j = from;
-            let mut index: Option<usize> = None;
-
-            while j < to {
-                if self.less(j, i) {
-                    i = j;
-                    index = Some(i);
-                }
-                j += 1;
-            }
-
-            index
-        };
-    }
 }
 
 impl<'a, T> IndexedPriorityQueue<T> for MinIndexedPriorityQueue<'a, T>
 where
     T: Clone + PartialOrd,
 {
-    fn contains(&self, key_index: usize) -> bool {
-        self.key_in_bounds_or_panic(key_index);
-
-        self.position_map[key_index].is_some()
-    }
-
-    #[inline]
-    fn peek_min_key_index(&self) -> usize {
-        self.is_not_empty_or_panic();
-
-        self.inverse(0)
-    }
-
-    fn peek_min_value(&self) -> T {
-        self.values[self.peek_min_key_index()].clone()
-    }
-
-    fn value_of(&self, key_index: usize) -> T {
-        self.key_exists_or_panic(key_index);
-        self.values[key_index].clone()
-    }
-
-    fn insert(&mut self, key_index: usize, value: T) {
-        self.key_implies_expanding_need(key_index);
-        self.key_already_exists_panic(key_index);
-
-        let size = self.size();
-        self.position_map[key_index] = Some(size);
-        self.inverse_map[size] = Some(key_index);
-        if key_index < self.values.len() {
-            self.values.insert(key_index, value);
-        } else {
-            self.values.push(value);
-        }
-        self.swim(size);
-    }
-
     fn append(&mut self, extra_values: &mut Vec<T>) {
         let size = self.size();
         let next_size = size + extra_values.len();
@@ -144,6 +107,20 @@ where
         });
 
         self.fix_heap_invariant();
+    }
+
+    fn contains(&self, key_index: usize) -> bool {
+        self.key_in_bounds_or_panic(key_index);
+
+        self.position_map[key_index].is_some()
+    }
+
+    fn decrease(&mut self, key_index: usize, value: T) {
+        self.key_exists_or_panic(key_index);
+        if value < self.values[key_index] {
+            self.values[key_index] = value;
+            self.swim(self.position(key_index))
+        }
     }
 
     fn delete(&mut self, key_index: usize) -> T {
@@ -176,6 +153,21 @@ where
         value
     }
 
+    fn insert(&mut self, key_index: usize, value: T) {
+        self.key_implies_expanding_need(key_index);
+        self.key_already_exists_panic(key_index);
+
+        let size = self.size();
+        self.position_map[key_index] = Some(size);
+        self.inverse_map[size] = Some(key_index);
+        if key_index < self.values.len() {
+            self.values.insert(key_index, value);
+        } else {
+            self.values.push(value);
+        }
+        self.swim(size);
+    }
+
     fn increase(&mut self, key_index: usize, value: T) {
         self.key_exists_or_panic(key_index);
         if self.values[key_index] < value {
@@ -184,12 +176,15 @@ where
         }
     }
 
-    fn decrease(&mut self, key_index: usize, value: T) {
-        self.key_exists_or_panic(key_index);
-        if value < self.values[key_index] {
-            self.values[key_index] = value;
-            self.swim(self.position(key_index))
-        }
+    #[inline]
+    fn peek_min_key_index(&self) -> usize {
+        self.is_not_empty_or_panic();
+
+        self.inverse(0)
+    }
+
+    fn peek_min_value(&self) -> T {
+        self.values[self.peek_min_key_index()].clone()
     }
 
     fn poll_min_key_index(&mut self) -> usize {
@@ -218,6 +213,11 @@ where
         self.swim(i);
 
         old_value
+    }
+
+    fn value_of(&self, key_index: usize) -> T {
+        self.key_exists_or_panic(key_index);
+        self.values[key_index].clone()
     }
 }
 
