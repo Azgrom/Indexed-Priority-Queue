@@ -3,6 +3,7 @@ pub trait IndexedPriorityQueue<T> {
     fn contains(&self, key_index: usize) -> bool;
     fn decrease(&mut self, key_index: usize, value: T);
     fn delete(&mut self, key_index: usize) -> T;
+    fn drain(&mut self, start: usize, end: usize) -> Vec<T>;
     fn insert(&mut self, key_index: usize, value: T);
     fn increase(&mut self, key_index: usize, value: T);
     fn peek_min_key_index(&self) -> usize;

@@ -101,10 +101,11 @@ where
         Range {
             start: size,
             end: self.size(),
-        }.for_each(|i| {
-            self.inverse_map[i] = Some(i);
-            self.position_map[i] = Some(i);
-        });
+        }
+            .for_each(|i| {
+                self.inverse_map[i] = Some(i);
+                self.position_map[i] = Some(i);
+            });
 
         self.fix_heap_invariant();
     }
@@ -151,6 +152,33 @@ where
         self.inverse_map[size] = None;
 
         value
+    }
+
+    fn drain(&mut self, start: usize, end: usize) -> Vec<T> {
+        let mapping_len = self.position_map.len();
+        let remaining = self.size().wrapping_sub(1 + end - start);
+        let drain = self.values.drain(start..=end).collect::<Vec<T>>();
+
+        self.inverse_map.truncate(0);
+        self.position_map.truncate(0);
+
+        self.inverse_map.resize_with(mapping_len, || None);
+        self.position_map.resize_with(mapping_len, || None);
+
+        if remaining > 0 {
+            Range {
+                start: 0,
+                end: remaining,
+            }
+                .for_each(|i| {
+                    self.inverse_map[i] = Some(i);
+                    self.position_map[i] = Some(i);
+                });
+
+            self.fix_heap_invariant();
+        }
+
+        drain
     }
 
     fn insert(&mut self, key_index: usize, value: T) {
@@ -262,10 +290,14 @@ where
     }
 
     fn fix_heap_invariant(&mut self) {
-        let edge_layer_range = Range {
-            start: (self.inverse_map.len() / 2) - 1,
-            end: self.values.len(),
+        let mut edge_layer_range = Range {
+            start: (self.inverse_map.len() / 2).wrapping_sub(1),
+            end: self.size(),
         };
+
+        if edge_layer_range.start > edge_layer_range.end {
+            edge_layer_range.start = (self.size().next_power_of_two() / 2).wrapping_sub(1);
+        }
         edge_layer_range.for_each(|i| self.swim(i));
     }
 
@@ -522,7 +554,7 @@ mod min_indexed_pq_tests {
     }
 
     #[test]
-    fn append_should_successfulle_increase_ipq_with_extra_vector_outside_mapping_bounds() {
+    fn append_should_successfully_increase_ipq_with_extra_vector_outside_mapping_bounds() {
         let mut values = vec![1, 2, 2, 2, 0];
         let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
         let mut extra_values = vec![3, 4, 5, -1];
@@ -532,6 +564,55 @@ mod min_indexed_pq_tests {
         assert_eq!(ipq.size(), 9);
         assert_eq!(ipq.inverse_map.len(), 16);
         assert_eq!(ipq.position_map.len(), 16);
+    }
+
+    #[test]
+    fn is_empty_should_correctly_function_with_a_empty_vector_generated_ipq() {
+        let mut values: Vec<i32> = vec![];
+        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        assert!(ipq.is_empty());
+    }
+
+    #[test]
+    fn drain_should_successfully_remove_values_instances_from_within_a_interval() {
+        let mut values: Vec<i32> = vec![9, 8, 7, 6, 5, 1, 2, 2, 2, 3, 4, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        ipq.drain(5, 11);
+
+        assert_eq!(ipq.size(), 5);
+        assert_eq!(ipq.peek_min_value(), 5);
+        assert_eq!(ipq.inverse_map.len(), 16);
+        assert_eq!(ipq.position_map.len(), 16);
+    }
+
+    #[test]
+    fn drain_should_successfully_empty_a_ipq() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        ipq.drain(0, 4);
+
+        assert!(ipq.is_empty());
+    }
+
+    #[test]
+    #[should_panic]
+    fn drain_should_fail_with_invalid_start_index_delimiter() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        ipq.drain(11, 4);
+    }
+
+    #[test]
+    #[should_panic]
+    fn drain_should_fail_with_invalid_end_index_delimiter() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        ipq.drain(0, 20);
     }
 
     #[test]
@@ -547,7 +628,7 @@ mod min_indexed_pq_tests {
     #[should_panic]
     fn invalid_key_index_should_provide_invalid_inverse_map_as_key() {
         let mut values = vec![1, 2, 2, 2, 0];
-        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
 
         ipq.value(5);
     }
@@ -556,7 +637,7 @@ mod min_indexed_pq_tests {
     #[should_panic]
     fn invalid_key_index_should_trigger_exist_key_panic() {
         let mut values = vec![1, 2, 2, 2, 0];
-        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
 
         ipq.value_of(5);
     }
