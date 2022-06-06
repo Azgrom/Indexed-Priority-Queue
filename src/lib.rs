@@ -125,6 +125,27 @@ where
         self.swim(size);
     }
 
+    fn append(&mut self, extra_values: &mut Vec<T>) {
+        let size = self.size();
+        let next_size = size + extra_values.len();
+
+        if next_size > self.position_map.len() {
+            self.expand_mapping();
+        }
+
+        self.values.append(extra_values);
+
+        Range {
+            start: size,
+            end: self.size(),
+        }.for_each(|i| {
+            self.inverse_map[i] = Some(i);
+            self.position_map[i] = Some(i);
+        });
+
+        self.fix_heap_invariant();
+    }
+
     fn delete(&mut self, key_index: usize) -> T {
         self.key_exists_or_panic(key_index);
 
@@ -248,6 +269,15 @@ where
         edge_layer_range.for_each(|i| self.swim(i));
     }
 
+    fn expand_mapping(&mut self) {
+        let pm_len = self.position_map.len();
+        let extra_len = (pm_len + 1).next_power_of_two() - pm_len;
+
+        let mut mapping_expansion = vec![None; extra_len];
+        self.position_map.append(&mut mapping_expansion.clone());
+        self.inverse_map.append(&mut mapping_expansion);
+    }
+
     pub fn left_child(&self, node_index: usize) -> Option<&T> {
         let i = 2 * node_index + 1;
         return if i < self.values.len() {
@@ -268,12 +298,7 @@ where
 
     fn key_implies_expanding_need(&mut self, key_index: usize) {
         if key_index >= self.position_map.len() && key_index == self.values.len() {
-            let pm_len = self.position_map.len();
-            let extra_len = (pm_len + 1).next_power_of_two() - pm_len;
-
-            let mut mapping_expansion = vec![None; extra_len];
-            self.position_map.append(&mut mapping_expansion.clone());
-            self.inverse_map.append(&mut mapping_expansion);
+            self.expand_mapping();
         }
     }
 
@@ -484,8 +509,34 @@ mod min_indexed_pq_tests {
     }
 
     #[test]
+    fn append_should_successfully_increase_ipq_with_extra_vector_within_mapping_bounds() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        let mut extra_values = vec![3, 4, 5];
+
+        ipq.append(&mut extra_values);
+
+        assert_eq!(ipq.size(), 8);
+        assert_eq!(ipq.inverse_map.len(), 8);
+        assert_eq!(ipq.position_map.len(), 8);
+    }
+
+    #[test]
+    fn append_should_successfulle_increase_ipq_with_extra_vector_outside_mapping_bounds() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        let mut extra_values = vec![3, 4, 5, -1];
+
+        ipq.append(&mut extra_values);
+
+        assert_eq!(ipq.size(), 9);
+        assert_eq!(ipq.inverse_map.len(), 16);
+        assert_eq!(ipq.position_map.len(), 16);
+    }
+
+    #[test]
     #[should_panic]
-    fn invalid_key_index_should_panic_insert() {
+    fn invalid_key_index_should_panic_insert_at_value_method() {
         let mut values = vec![1, 2, 2, 2, 0];
         let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
 

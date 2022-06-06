@@ -4,6 +4,7 @@ pub trait IndexedPriorityQueue<T> {
     fn peek_min_value(&self) -> T;
     fn value_of(&self, key_index: usize) -> T;
     fn insert(&mut self, key_index: usize, value: T);
+    fn append(&mut self, extra_values: &mut Vec<T>);
     fn delete(&mut self, key_index: usize) -> T;
     fn increase(&mut self, key_index: usize, value: T);
     fn decrease(&mut self, key_index: usize, value: T);
