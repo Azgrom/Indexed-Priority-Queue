@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion, black_box};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use indexed_priority_queue::MinIndexedPriorityQueue;
 use std::ops::Range;
 
