@@ -156,6 +156,8 @@ where
             return value;
         }
 
+        self.position_map.iter().enumerate().max();
+
         self.swap(i, size);
         self.sink(i);
         self.swim(i);
@@ -380,6 +382,42 @@ where
 #[cfg(test)]
 mod min_indexed_pq_tests {
     use crate::{IndexedBinaryHeap, IndexedPriorityQueue, MinIndexedPriorityQueue};
+
+    #[test]
+    fn test_iter_max_and_min_with_integers() {
+        let values = vec![
+            Some(1),
+            Some(0),
+            Some(2),
+            Some(4),
+            Some(3),
+            None,
+            None,
+            None,
+        ];
+
+        // Which values are max/min
+        assert_eq!(values.iter().max(), Some(&Some(4)));
+        assert_eq!(values.iter().min(), Some(&None));
+
+        // Max/Min indexes
+        assert_eq!(
+            values
+                .iter()
+                .enumerate()
+                .max_by_key(|(_, &v)| v)
+                .map(|(i, _)| i),
+            Some(3)
+        );
+        assert_eq!(
+            values
+                .iter()
+                .enumerate()
+                .min_by_key(|(_, &v)| v)
+                .map(|(i, _)| i),
+            Some(5)
+        );
+    }
 
     #[test]
     fn min_ipq_should_successfully_create_a_binary_heap_from_pre_existent_vec() {
@@ -629,6 +667,22 @@ mod min_indexed_pq_tests {
     }
 
     #[test]
+    fn increase_should_successfully_manipulate_and_correct_heap() {
+        let mut values: Vec<i32> = vec![9, 8, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        ipq.increase(0, 100);
+        ipq.increase(1, 10);
+
+        assert_eq!(ipq.size(), 3);
+        assert_eq!(ipq.peek_min_key_index(), 2);
+        assert_eq!(ipq.poll_min_value(), 0);
+        assert_eq!(ipq.peek_min_key_index(), 1);
+        assert_eq!(ipq.poll_min_value(), 10);
+        assert_eq!(ipq.poll_min_value(), 100);
+    }
+
+    #[test]
     fn poll_should_be_able_to_empty_heap_with_no_problems() {
         let mut values: Vec<i32> = vec![9, 8, 0];
         let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
@@ -637,6 +691,26 @@ mod min_indexed_pq_tests {
         assert_eq!(ipq.poll_min_value(), 8);
         assert_eq!(ipq.poll_min_value(), 9);
         assert!(ipq.is_empty());
+    }
+
+    #[test]
+    fn poll_min_key_index_should_successfully_return_min_value_index_and_remove_it() {
+        let mut values: Vec<i32> = vec![9, 8, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        assert_eq!(ipq.poll_min_key_index(), 2);
+        assert_eq!(ipq.poll_min_key_index(), 1);
+        assert_eq!(ipq.poll_min_key_index(), 0);
+    }
+
+    #[test]
+    fn value_of_should_return_values_by_index() {
+        let mut values: Vec<i32> = vec![9, 8, 0];
+        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        assert_eq!(ipq.value_of(1), 8);
+        assert_eq!(ipq.value_of(0), 9);
+        assert_eq!(ipq.value_of(2), 0);
     }
 
     #[test]
@@ -655,6 +729,20 @@ mod min_indexed_pq_tests {
         let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
 
         ipq.drain(0, 20);
+    }
+
+    #[test]
+    fn test() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        assert_eq!(ipq.peek_min_value(), 0);
+        assert_eq!(ipq.update(1, -1), 2);
+        assert_eq!(ipq.peek_min_value(), -1);
+        assert_eq!(ipq.update(3, -5), 2);
+        assert_eq!(ipq.poll_min_value(), -5);
+        assert_eq!(ipq.update(1, 4), -1);
+        assert_eq!(ipq.poll_min_value(), 0);
     }
 
     #[test]
