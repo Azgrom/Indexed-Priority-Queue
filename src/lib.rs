@@ -1,4 +1,5 @@
 use crate::ipq::{IndexedBinaryHeap, IndexedPriorityQueue};
+use std::fmt::{Display, Formatter};
 use std::ops::Range;
 
 pub mod ipq;
@@ -17,9 +18,23 @@ pub struct MinIndexedPriorityQueue<'a, T> {
     inverse_map: Vec<Option<usize>>,
 }
 
+impl<'a, T> Display for MinIndexedPriorityQueue<'a, T>
+    where
+        T: Clone + PartialOrd,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Minimum Priority Queue of {} elements and {} branches",
+            self.size(),
+            self.branches_count()
+        )
+    }
+}
+
 impl<'a, T> IndexedBinaryHeap for MinIndexedPriorityQueue<'a, T>
-where
-    T: Clone + PartialOrd,
+    where
+        T: Clone + PartialOrd,
 {
     fn is_empty(&self) -> bool {
         self.values.is_empty()
@@ -309,6 +324,10 @@ where
         self.inverse_map.append(&mut mapping_expansion);
     }
 
+    fn branches_count(&self) -> usize {
+        self.size() - 1
+    }
+
     pub fn left_child(&self, node_index: usize) -> Option<&T> {
         let i = 2 * node_index + 1;
         return if i < self.values.len() {
@@ -399,6 +418,36 @@ mod min_indexed_pq_tests {
                 .map(|(i, _)| i),
             Some(5)
         );
+    }
+
+    #[test]
+    fn branches_count_should_return_correct_number_of_links_between_nodes() {
+        let mut values = vec![9, 8, 8, 6, 1, 7, 2, 2, 2, 3, 4, 0];
+        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        assert_eq!(ipq.branches_count(), 11);
+        drop(ipq);
+        drop(values);
+
+        let mut values = vec![1, 2, 2, 2, 0];
+        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        assert_eq!(ipq.branches_count(), 4);
+        drop(ipq);
+        drop(values);
+
+        let mut values = vec![3, 4, 5, -1];
+        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        assert_eq!(ipq.branches_count(), 3);
+    }
+
+    #[test]
+    fn display_implementation_test() {
+        let mut values = vec![3, 4, 5, -1];
+        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        assert_eq!(
+            format!("{}", ipq),
+            "Minimum Priority Queue of 4 elements and 3 branches"
+        )
     }
 
     #[test]
