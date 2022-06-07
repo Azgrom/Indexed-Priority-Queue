@@ -354,7 +354,7 @@ where
 
     fn is_not_empty_or_panic(&self) {
         if self.is_empty() {
-            panic!("Priority queue underflow");
+            panic!("Priority Queue is empty. There is no value to extract");
         }
     }
 
@@ -801,5 +801,24 @@ mod min_indexed_pq_tests {
         let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
 
         ipq.value_of(5);
+    }
+
+    #[test]
+    #[should_panic]
+    fn peek_on_empty_pq_should_panic() {
+        let mut values: Vec<u8> = vec![];
+        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        assert!(ipq.is_empty());
+        ipq.peek_min_value();
+    }
+
+    #[test]
+    #[should_panic]
+    fn insert_on_a_already_occupied_index_should_panic() {
+        let mut values = vec![1, 2, 2, 2];
+        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        ipq.contains(10);
     }
 }
