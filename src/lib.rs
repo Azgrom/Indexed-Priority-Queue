@@ -64,12 +64,11 @@ where
     }
 
     fn swim(&mut self, mut i: usize) {
-        let parent = |x| parent_node_index(x);
-        let mut pi = parent(i);
-        while self.less(i, pi) {
+        let mut pi = parent_node_index(i);
+        while i != pi && self.less(i, pi) {
             self.swap(i, pi);
             i = pi;
-            pi = parent(i);
+            pi = parent_node_index(i);
         }
     }
 
@@ -120,6 +119,7 @@ where
         self.key_exists_or_panic(key_index);
         if value < self.values[key_index] {
             self.values[key_index] = value;
+
             self.swim(self.position(key_index))
         }
     }
@@ -130,7 +130,16 @@ where
         let i = self.position(key_index);
         let size = self.size() - 1;
 
-        if self.inverse(size) == self.position(size) {
+        if size == 0 {
+            let value = self.values[key_index].clone();
+            self.values.remove(key_index);
+            self.position_map[key_index] = None;
+            self.inverse_map[size] = None;
+
+            return value;
+        }
+
+        if self.same_mapping_end(size) {
             let value = self.values[key_index].clone();
             self.values.remove(key_index);
             self.position_map[size] = None;
@@ -138,6 +147,11 @@ where
 
             self.sink(i);
             self.swim(i);
+
+            if size == 1 {
+                self.inverse_map[0] = Some(0);
+                self.position_map[0] = Some(0);
+            }
 
             return value;
         }
@@ -253,27 +267,6 @@ impl<'a, T> MinIndexedPriorityQueue<'a, T>
 where
     T: Clone + PartialOrd,
 {
-    pub fn from_existent_vec(values: &'a mut Vec<T>) -> Self {
-        let npt = values.len().next_power_of_two();
-        let mut values_map = vec![None; npt];
-        Range {
-            start: 0,
-            end: values.len(),
-        }
-        .for_each(|i| values_map[i] = Some(i));
-        let position_map = values_map.clone();
-        let inverse_map = values_map;
-
-        let mut min_ipq = Self {
-            values,
-            position_map,
-            inverse_map,
-        };
-        min_ipq.fix_heap_invariant();
-
-        min_ipq
-    }
-
     #[inline]
     fn position(&self, i: usize) -> usize {
         self.position_map[i].unwrap()
@@ -287,6 +280,32 @@ where
     #[inline]
     fn value(&self, i: usize) -> &T {
         &self.values[self.inverse(i)]
+    }
+
+    pub fn from_existent_vec(values: &'a mut Vec<T>) -> Self {
+        let npt = values.len().next_power_of_two();
+        let mut values_map = vec![None; npt];
+        Range {
+            start: 0,
+            end: values.len(),
+        }
+            .for_each(|i| values_map[i] = Some(i));
+        let position_map = values_map.clone();
+        let inverse_map = values_map;
+
+        let mut min_ipq = Self {
+            values,
+            position_map,
+            inverse_map,
+        };
+        min_ipq.fix_heap_invariant();
+
+        min_ipq
+    }
+
+    fn same_mapping_end(&mut self, size: usize) -> bool {
+        let last_some = self.inverse_map.iter().rposition(|i| i.is_some()).unwrap();
+        self.inverse_map[size] == self.position_map[size] && size == last_some
     }
 
     fn fix_heap_invariant(&mut self) {
@@ -594,6 +613,33 @@ mod min_indexed_pq_tests {
 
         ipq.drain(0, 4);
 
+        assert!(ipq.is_empty());
+    }
+
+    #[test]
+    fn decrease_should_successfully_manipulate_and_correct_heap() {
+        let mut values: Vec<i32> = vec![9, 8, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        ipq.decrease(0, -100);
+        ipq.decrease(1, -2);
+
+        assert_eq!(ipq.size(), 3);
+        assert_eq!(ipq.peek_min_key_index(), 0);
+        assert_eq!(ipq.poll_min_value(), -100);
+        assert_eq!(ipq.peek_min_key_index(), 0);
+        assert_eq!(ipq.poll_min_value(), -2);
+        assert_eq!(ipq.poll_min_value(), 0);
+    }
+
+    #[test]
+    fn poll_should_be_able_to_empty_heap_with_no_problems() {
+        let mut values: Vec<i32> = vec![9, 8, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        assert_eq!(ipq.poll_min_value(), 0);
+        assert_eq!(ipq.poll_min_value(), 8);
+        assert_eq!(ipq.poll_min_value(), 9);
         assert!(ipq.is_empty());
     }
 
