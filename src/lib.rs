@@ -130,42 +130,29 @@ where
         let i = self.node_index_by_value_index(key_index);
         let size = self.size() - 1;
 
-        if size == 0 {
-            let value = self.values[key_index].clone();
-            self.values.remove(key_index);
-            self.position_map[key_index] = None;
-            self.inverse_map[size] = None;
+        let pm_index_max = self
+            .position_map
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, &v)| v)
+            .map(|(i, _)| i);
+        let im_index_max = self
+            .inverse_map
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, &v)| v)
+            .map(|(i, _)| i);
 
-            return value;
-        }
-
-        if self.same_mapping_end(size) {
-            let value = self.values[key_index].clone();
-            self.values.remove(key_index);
-            self.position_map[size] = None;
-            self.inverse_map[size] = None;
-
-            self.sink(i);
-            self.swim(i);
-
-            if size == 1 {
-                self.inverse_map[0] = Some(0);
-                self.position_map[0] = Some(0);
-            }
-
-            return value;
-        }
-
-        self.position_map.iter().enumerate().max();
-
-        self.swap(i, size);
-        self.sink(i);
-        self.swim(i);
+        self.inverse_map.swap(size, im_index_max.unwrap());
+        self.position_map.swap(size, pm_index_max.unwrap());
 
         let value = self.values[key_index].clone();
         self.values.remove(key_index);
-        self.position_map[key_index] = None;
         self.inverse_map[size] = None;
+        self.position_map[size] = None;
+
+        self.sink(i);
+        self.swim(i);
 
         value
     }
@@ -299,11 +286,6 @@ where
         min_ipq.fix_heap_invariant();
 
         min_ipq
-    }
-
-    fn same_mapping_end(&mut self, size: usize) -> bool {
-        let last_some = self.inverse_map.iter().rposition(|i| i.is_some()).unwrap();
-        self.inverse_map[size] == self.position_map[size] && size == last_some
     }
 
     fn fix_heap_invariant(&mut self) {
@@ -714,6 +696,20 @@ mod min_indexed_pq_tests {
     }
 
     #[test]
+    fn sequential_update_and_polling_operations_should_be_executed_without_breaching_heap_invariance() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+
+        assert_eq!(ipq.peek_min_value(), 0);
+        assert_eq!(ipq.update(1, -1), 2);
+        assert_eq!(ipq.peek_min_value(), -1);
+        assert_eq!(ipq.update(3, -5), 2);
+        assert_eq!(ipq.poll_min_value(), -5);
+        assert_eq!(ipq.update(1, 4), -1);
+        assert_eq!(ipq.poll_min_value(), 0);
+    }
+
+    #[test]
     #[should_panic]
     fn drain_should_fail_with_invalid_start_index_delimiter() {
         let mut values = vec![1, 2, 2, 2, 0];
@@ -729,20 +725,6 @@ mod min_indexed_pq_tests {
         let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
 
         ipq.drain(0, 20);
-    }
-
-    #[test]
-    fn test() {
-        let mut values = vec![1, 2, 2, 2, 0];
-        let mut ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
-
-        assert_eq!(ipq.peek_min_value(), 0);
-        assert_eq!(ipq.update(1, -1), 2);
-        assert_eq!(ipq.peek_min_value(), -1);
-        assert_eq!(ipq.update(3, -5), 2);
-        assert_eq!(ipq.poll_min_value(), -5);
-        assert_eq!(ipq.update(1, 4), -1);
-        assert_eq!(ipq.poll_min_value(), 0);
     }
 
     #[test]
