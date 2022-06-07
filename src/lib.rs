@@ -27,7 +27,7 @@ where
 
     #[inline]
     fn less(&self, i: usize, j: usize) -> bool {
-        self.value(i) < self.value(j)
+        self.priority_sequenced_value(i) < self.priority_sequenced_value(j)
     }
 
     fn min_child(&self, mut i: usize) -> Option<usize> {
@@ -120,14 +120,14 @@ where
         if value < self.values[key_index] {
             self.values[key_index] = value;
 
-            self.swim(self.position(key_index))
+            self.swim(self.node_index_by_value_index(key_index))
         }
     }
 
     fn delete(&mut self, key_index: usize) -> T {
         self.key_exists_or_panic(key_index);
 
-        let i = self.position(key_index);
+        let i = self.node_index_by_value_index(key_index);
         let size = self.size() - 1;
 
         if size == 0 {
@@ -202,11 +202,7 @@ where
         let size = self.size();
         self.position_map[key_index] = Some(size);
         self.inverse_map[size] = Some(key_index);
-        if key_index < self.values.len() {
-            self.values.insert(key_index, value);
-        } else {
-            self.values.push(value);
-        }
+        self.values.push(value);
         self.swim(size);
     }
 
@@ -214,7 +210,7 @@ where
         self.key_exists_or_panic(key_index);
         if self.values[key_index] < value {
             self.values[key_index] = value;
-            self.sink(self.position(key_index));
+            self.sink(self.node_index_by_value_index(key_index));
         }
     }
 
@@ -222,7 +218,7 @@ where
     fn peek_min_key_index(&self) -> usize {
         self.is_not_empty_or_panic();
 
-        self.inverse(0)
+        self.value_index_by_node_index(0)
     }
 
     fn peek_min_value(&self) -> T {
@@ -247,7 +243,7 @@ where
     fn update(&mut self, key_index: usize, value: T) -> T {
         self.key_exists_or_panic(key_index);
 
-        let i = self.position(key_index);
+        let i = self.node_index_by_value_index(key_index);
         let old_value = self.values[key_index].clone();
 
         self.values[key_index] = value;
@@ -268,18 +264,18 @@ where
     T: Clone + PartialOrd,
 {
     #[inline]
-    fn position(&self, i: usize) -> usize {
+    fn node_index_by_value_index(&self, i: usize) -> usize {
         self.position_map[i].unwrap()
     }
 
     #[inline]
-    fn inverse(&self, i: usize) -> usize {
+    fn value_index_by_node_index(&self, i: usize) -> usize {
         self.inverse_map[i].unwrap()
     }
 
     #[inline]
-    fn value(&self, i: usize) -> &T {
-        &self.values[self.inverse(i)]
+    fn priority_sequenced_value(&self, i: usize) -> &T {
+        &self.values[self.value_index_by_node_index(i)]
     }
 
     pub fn from_existent_vec(values: &'a mut Vec<T>) -> Self {
@@ -332,7 +328,7 @@ where
     pub fn left_child(&self, node_index: usize) -> Option<&T> {
         let i = 2 * node_index + 1;
         return if i < self.values.len() {
-            Some(&self.values[self.inverse(i)])
+            Some(&self.values[self.value_index_by_node_index(i)])
         } else {
             None
         };
@@ -341,7 +337,7 @@ where
     pub fn right_child(&self, node_index: usize) -> Option<&T> {
         let i = 2 * node_index + 2;
         return if i < self.values.len() {
-            Some(&self.values[self.inverse(i)])
+            Some(&self.values[self.value_index_by_node_index(i)])
         } else {
             None
         };
@@ -676,7 +672,7 @@ mod min_indexed_pq_tests {
         let mut values = vec![1, 2, 2, 2, 0];
         let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
 
-        ipq.value(5);
+        ipq.priority_sequenced_value(5);
     }
 
     #[test]
