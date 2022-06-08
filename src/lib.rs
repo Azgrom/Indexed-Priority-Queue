@@ -11,15 +11,25 @@ fn parent_node_index(node_index: usize) -> usize {
     };
 }
 
-pub struct MinIndexedPriorityQueue<'a, T> {
+fn max_value_index<T: Copy + Ord>(array: &Vec<T>) -> usize {
+    array
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, &v)| v)
+        .map(|(i, _)| i)
+        .unwrap()
+}
+
+pub struct MinIndexedPriorityQueue<'a, T>
+{
     values: &'a mut Vec<T>,
     position_map: Vec<Option<usize>>,
     inverse_map: Vec<Option<usize>>,
 }
 
 impl<'a, T> IndexedBinaryHeap for MinIndexedPriorityQueue<'a, T>
-where
-    T: Clone + PartialOrd,
+    where
+        T: Clone + PartialOrd,
 {
     fn is_empty(&self) -> bool {
         self.values.is_empty()
@@ -32,25 +42,24 @@ where
 
     fn min_child(&self, mut i: usize) -> Option<usize> {
         let number_of_direct_childs_per_node = 2;
-        let from = number_of_direct_childs_per_node * i + 1;
-        let to = from + number_of_direct_childs_per_node;
+        let mut from = number_of_direct_childs_per_node * i + 1;
+        let mut to = from + number_of_direct_childs_per_node;
 
-        return if let true = self.size() <= to {
-            None
-        } else {
-            let mut j = from;
-            let mut index: Option<usize> = None;
+        if to > self.size() {
+            to = self.size();
+        }
 
-            while j < to {
-                if self.less(j, i) {
-                    i = j;
-                    index = Some(i);
-                }
-                j += 1;
+        let mut index: Option<usize> = None;
+
+        while from < to {
+            if self.less(from, i) {
+                i = from;
+                index = Some(i);
             }
+            from += 1;
+        }
 
-            index
-        };
+        index
     }
 
     fn size(&self) -> usize {
@@ -130,26 +139,17 @@ where
         let i = self.node_index_by_value_index(key_index);
         let size = self.size() - 1;
 
-        let pm_index_max = self
-            .position_map
-            .iter()
-            .enumerate()
-            .max_by_key(|(_, &v)| v)
-            .map(|(i, _)| i);
-        let im_index_max = self
-            .inverse_map
-            .iter()
-            .enumerate()
-            .max_by_key(|(_, &v)| v)
-            .map(|(i, _)| i);
+        let im_index_max = max_value_index(&self.inverse_map);
+        let pm_index_max = max_value_index(&self.position_map);
 
-        self.inverse_map.swap(size, im_index_max.unwrap());
-        self.position_map.swap(size, pm_index_max.unwrap());
+        self.inverse_map.swap(size, im_index_max);
+        self.position_map.swap(size, pm_index_max);
+
+        self.inverse_map[size] = None;
+        self.position_map[size] = None;
 
         let value = self.values[key_index].clone();
         self.values.remove(key_index);
-        self.inverse_map[size] = None;
-        self.position_map[size] = None;
 
         self.sink(i);
         self.swim(i);
