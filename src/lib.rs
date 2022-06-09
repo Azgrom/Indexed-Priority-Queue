@@ -1,7 +1,7 @@
 use crate::ipq::{IndexedBinaryHeap, IndexedPriorityQueue};
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 
 pub mod ipq;
 
@@ -333,6 +333,10 @@ where
 
     pub fn iter(&self) -> Iter<'_, T> {
         self.values.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+        self.values.iter_mut()
     }
 
     fn fix_heap_invariant(&mut self) {
