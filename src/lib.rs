@@ -1,6 +1,7 @@
 use crate::ipq::{IndexedBinaryHeap, IndexedPriorityQueue};
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
+use std::slice::Iter;
 
 pub mod ipq;
 
@@ -201,12 +202,11 @@ where
 
     fn insert(&mut self, key_index: usize, value: T) {
         self.key_implies_expanding_need(key_index);
-        self.key_already_exists_panic(key_index);
 
         let size = self.size();
-        self.position_map[key_index] = Some(size);
-        self.inverse_map[size] = Some(key_index);
-        self.values.push(value);
+        self.position_map[size] = Some(size);
+        self.inverse_map[size] = Some(size);
+        self.values.insert(key_index, value);
         self.swim(size);
     }
 
@@ -242,6 +242,16 @@ where
         self.delete(min_key_index);
 
         min_value
+    }
+
+    fn push(&mut self, value: T) {
+        let size = self.size();
+        self.key_implies_expanding_need(size);
+
+        self.position_map[size] = Some(size);
+        self.inverse_map[size] = Some(size);
+        self.values.push(value);
+        self.swim(size);
     }
 
     fn update(&mut self, key_index: usize, value: T) -> T {
@@ -352,15 +362,13 @@ where
         }
     }
 
+    fn iter(&self) -> Iter<'_, T> {
+        self.values.iter()
+    }
+
     fn is_not_empty_or_panic(&self) {
         if self.is_empty() {
             panic!("Priority Queue is empty. There is no value to extract");
-        }
-    }
-
-    fn key_already_exists_panic(&self, key_index: usize) {
-        if self.contains(key_index) {
-            panic!("Index already exists: received: {}", key_index);
         }
     }
 
@@ -423,26 +431,26 @@ mod min_indexed_pq_tests {
     #[test]
     fn branches_count_should_return_correct_number_of_links_between_nodes() {
         let mut values = vec![9, 8, 8, 6, 1, 7, 2, 2, 2, 3, 4, 0];
-        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
         assert_eq!(ipq.branches_count(), 11);
         drop(ipq);
         drop(values);
 
         let mut values = vec![1, 2, 2, 2, 0];
-        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
         assert_eq!(ipq.branches_count(), 4);
         drop(ipq);
         drop(values);
 
         let mut values = vec![3, 4, 5, -1];
-        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
         assert_eq!(ipq.branches_count(), 3);
     }
 
     #[test]
     fn display_implementation_test() {
         let mut values = vec![3, 4, 5, -1];
-        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
 
         assert_eq!(
             format!("{}", ipq),
@@ -807,7 +815,7 @@ mod min_indexed_pq_tests {
     #[should_panic]
     fn peek_on_empty_pq_should_panic() {
         let mut values: Vec<u8> = vec![];
-        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
 
         assert!(ipq.is_empty());
         ipq.peek_min_value();
@@ -817,7 +825,7 @@ mod min_indexed_pq_tests {
     #[should_panic]
     fn insert_on_a_already_occupied_index_should_panic() {
         let mut values = vec![1, 2, 2, 2];
-        let ipq = MinIndexedPriorityQueue::from_existent_vec(&mut values);
+        let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
 
         ipq.contains(10);
     }

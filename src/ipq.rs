@@ -10,6 +10,7 @@ pub trait IndexedPriorityQueue<T> {
     fn peek_min_value(&self) -> T;
     fn poll_min_key_index(&mut self) -> usize;
     fn poll_min_value(&mut self) -> T;
+    fn push(&mut self, value: T);
     fn update(&mut self, key_index: usize, value: T) -> T;
     fn value_of(&self, key_index: usize) -> T;
 }
