@@ -23,6 +23,7 @@ fn max_value_index<T: Copy + Ord>(array: &Vec<T>) -> usize {
         .unwrap()
 }
 
+#[derive(Clone)]
 pub struct MinIndexedPriorityQueue<'a, T>
     where
         T: Clone,
