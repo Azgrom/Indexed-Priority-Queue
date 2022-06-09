@@ -313,6 +313,28 @@ where
         min_ipq
     }
 
+    pub fn left_child(&self, node_index: usize) -> Option<&T> {
+        let i = 2 * node_index + 1;
+        return if i < self.values.len() {
+            Some(&self.values[self.value_index_by_node_index(i)])
+        } else {
+            None
+        };
+    }
+
+    pub fn right_child(&self, node_index: usize) -> Option<&T> {
+        let i = 2 * node_index + 2;
+        return if i < self.values.len() {
+            Some(&self.values[self.value_index_by_node_index(i)])
+        } else {
+            None
+        };
+    }
+
+    pub fn iter(&self) -> Iter<'_, T> {
+        self.values.iter()
+    }
+
     fn fix_heap_invariant(&mut self) {
         let mut edge_layer_range = Range {
             start: (self.inverse_map.len() / 2).wrapping_sub(1),
@@ -338,32 +360,10 @@ where
         self.size() - 1
     }
 
-    pub fn left_child(&self, node_index: usize) -> Option<&T> {
-        let i = 2 * node_index + 1;
-        return if i < self.values.len() {
-            Some(&self.values[self.value_index_by_node_index(i)])
-        } else {
-            None
-        };
-    }
-
-    pub fn right_child(&self, node_index: usize) -> Option<&T> {
-        let i = 2 * node_index + 2;
-        return if i < self.values.len() {
-            Some(&self.values[self.value_index_by_node_index(i)])
-        } else {
-            None
-        };
-    }
-
     fn key_implies_expanding_need(&mut self, key_index: usize) {
         if key_index >= self.position_map.len() && key_index == self.values.len() {
             self.expand_mapping();
         }
-    }
-
-    fn iter(&self) -> Iter<'_, T> {
-        self.values.iter()
     }
 
     fn is_not_empty_or_panic(&self) {
