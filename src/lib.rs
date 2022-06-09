@@ -1,4 +1,5 @@
 use crate::ipq::{IndexedBinaryHeap, IndexedPriorityQueue};
+use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
 use std::slice::{Iter, IterMut};
@@ -23,6 +24,8 @@ fn max_value_index<T: Copy + Ord>(array: &Vec<T>) -> usize {
 }
 
 pub struct MinIndexedPriorityQueue<'a, T>
+    where
+        T: Clone,
 {
     values: &'a mut Vec<T>,
     position_map: Vec<Option<usize>>,
@@ -40,6 +43,24 @@ impl<'a, T> Display for MinIndexedPriorityQueue<'a, T>
             self.size(),
             self.branches_count()
         )
+    }
+}
+
+impl<'a, T> PartialEq<Self> for MinIndexedPriorityQueue<'a, T>
+    where
+        T: Clone + PartialOrd,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.peek_min_value().eq(&other.peek_min_value())
+    }
+}
+
+impl<'a, T> PartialOrd for MinIndexedPriorityQueue<'a, T>
+    where
+        T: Clone + PartialOrd,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.peek_min_value().partial_cmp(&other.peek_min_value())
     }
 }
 
