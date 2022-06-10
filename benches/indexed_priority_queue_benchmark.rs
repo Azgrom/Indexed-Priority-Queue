@@ -12,7 +12,7 @@ fn ten_million_sequential_integers_benchmark(c: &mut Criterion) {
                 .rev()
                 .map(|i| i)
                 .collect::<Vec<i32>>();
-            MinIndexedPriorityQueue::from_vec_ref(black_box(&mut v));
+            MinIndexedPriorityQueue::from(black_box(&mut v));
         });
     });
 }

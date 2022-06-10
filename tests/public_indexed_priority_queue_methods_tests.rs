@@ -4,7 +4,7 @@ use indexed_priority_queue::MinIndexedPriorityQueue;
 #[test]
 fn test_insertion_and_polling_until_emptiness() {
     let mut values = vec![1, 2, 2, 2, 0];
-    let mut ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
+    let mut ipq = MinIndexedPriorityQueue::from(&mut values);
 
     ipq.insert(5, 4);
 
@@ -20,7 +20,7 @@ fn test_insertion_and_polling_until_emptiness() {
 #[test]
 fn test_decrease_and_polling_until_emptiness() {
     let mut values = vec![1, 2, 2, 2, 0];
-    let mut ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
+    let mut ipq = MinIndexedPriorityQueue::from(&mut values);
 
     ipq.decrease(0, -1);
     ipq.decrease(1, -2);
