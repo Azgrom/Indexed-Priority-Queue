@@ -33,8 +33,8 @@ where
 }
 
 impl<'a, T> Display for MinIndexedPriorityQueue<'a, T>
-    where
-        T: Clone + PartialOrd,
+where
+    T: Clone + PartialOrd,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -95,12 +95,10 @@ impl<'a, T> From<&'a mut Vec<T>> for MinIndexedPriorityQueue<'a, T>
     /// ```
     fn from(values: &'a mut Vec<T>) -> Self {
         let npt = values.len().next_power_of_two();
-        let mut values_map = vec![None; npt];
-        Range {
-            start: 0,
-            end: values.len(),
-        }
-            .for_each(|i| values_map[i] = Some(i));
+        let mut values_map = (0..values.len())
+            .map(|i| Some(i))
+            .collect::<Vec<Option<usize>>>();
+        (values.len()..npt).for_each(|_| values_map.push(None));
 
         let position_map = values_map.clone();
         let inverse_map = values_map;
@@ -404,15 +402,10 @@ where
     }
 
     fn fix_heap_invariant(&mut self) {
-        let mut edge_layer_range = Range {
-            start: (self.inverse_map.len() / 2).wrapping_sub(1),
-            end: self.size(),
-        };
-
-        if edge_layer_range.start > edge_layer_range.end {
-            edge_layer_range.start = (self.size().next_power_of_two() / 2).wrapping_sub(1);
-        }
-        edge_layer_range.for_each(|i| self.swim(i));
+        let start = (self.size().next_power_of_two() / 2).wrapping_sub(1);
+        let end = self.size();
+        (start..end)
+            .for_each(|i| self.swim(i));
     }
 
     fn expand_mapping(&mut self) {
