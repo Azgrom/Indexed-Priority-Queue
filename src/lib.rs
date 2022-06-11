@@ -7,14 +7,14 @@ use std::slice::{Iter, IterMut};
 pub mod ipq;
 
 fn parent_node_index(node_index: usize) -> usize {
-    return match node_index {
+    match node_index {
         0 => 0,
         n if n % 2 == 0 => (n / 2) - 1,
         _ => (node_index - 1) / 2,
-    };
+    }
 }
 
-fn max_value_index<T: Copy + Ord>(array: &Vec<T>) -> usize {
+fn max_value_index<T: Copy + Ord>(array: &[T]) -> usize {
     array
         .iter()
         .enumerate()
@@ -95,9 +95,7 @@ impl<'a, T> From<&'a mut Vec<T>> for MinIndexedPriorityQueue<'a, T>
     /// ```
     fn from(values: &'a mut Vec<T>) -> Self {
         let npt = values.len().next_power_of_two();
-        let mut values_map = (0..values.len())
-            .map(|i| Some(i))
-            .collect::<Vec<Option<usize>>>();
+        let mut values_map = (0..values.len()).map(Some).collect::<Vec<Option<usize>>>();
         (values.len()..npt).for_each(|_| values_map.push(None));
 
         let position_map = values_map.clone();
@@ -206,11 +204,7 @@ where
     }
 
     fn contains(&self, key_index: usize) -> bool {
-        return if key_index > (self.size() - 1) {
-            false
-        } else {
-            true
-        };
+        key_index <= (self.size() - 1)
     }
 
     fn decrease(&mut self, key_index: usize, value: T) {
@@ -377,20 +371,20 @@ where
 
     pub fn left_child(&self, node_index: usize) -> Option<&T> {
         let i = 2 * node_index + 1;
-        return if i < self.values.len() {
+        if i < self.values.len() {
             Some(&self.values[self.inverse_map[i].unwrap()])
         } else {
             None
-        };
+        }
     }
 
     pub fn right_child(&self, node_index: usize) -> Option<&T> {
         let i = 2 * node_index + 2;
-        return if i < self.values.len() {
+        if i < self.values.len() {
             Some(&self.values[self.inverse_map[i].unwrap()])
         } else {
             None
-        };
+        }
     }
 
     pub fn iter(&self) -> Iter<'_, T> {
@@ -404,8 +398,7 @@ where
     fn fix_heap_invariant(&mut self) {
         let start = (self.size().next_power_of_two() / 2).wrapping_sub(1);
         let end = self.size();
-        (start..end)
-            .for_each(|i| self.swim(i));
+        (start..end).for_each(|i| self.swim(i));
     }
 
     fn expand_mapping(&mut self) {
