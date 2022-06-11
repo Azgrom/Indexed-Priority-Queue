@@ -24,8 +24,8 @@ fn max_value_index<T: Copy + Ord>(array: &Vec<T>) -> usize {
 }
 
 pub struct MinIndexedPriorityQueue<'a, T>
-    where
-        T: Clone,
+where
+    T: Clone,
 {
     values: &'a mut Vec<T>,
     position_map: Vec<Option<usize>>,
@@ -65,8 +65,34 @@ impl<'a, T> PartialOrd for MinIndexedPriorityQueue<'a, T>
 }
 
 impl<'a, T> From<&'a mut Vec<T>> for MinIndexedPriorityQueue<'a, T>
-    where T: Clone + PartialOrd
+    where
+        T: Clone + PartialOrd,
 {
+    /// Initializes a minimum indexed priority queue from a mutably borrowed `values` vector.
+    ///
+    /// # Arguments
+    ///
+    /// * `values`: `&mut Vec<T>` where `T` implements `Clone` and `PartialOrd`
+    ///
+    /// returns: `MinIndexedPriorityQueue<T>`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::any::type_name;
+    /// use indexed_priority_queue::ipq::IndexedBinaryHeap;
+    /// use indexed_priority_queue::MinIndexedPriorityQueue;
+    ///
+    /// let mut values: Vec<u8> = Vec::new();
+    /// let mut min_ipq = MinIndexedPriorityQueue::from(&mut values);
+    ///
+    /// fn type_of<T>(_: T) -> &'static str {
+    ///     type_name::<T>()
+    /// }
+    ///
+    /// assert_eq!(min_ipq.is_empty(), true);
+    /// assert_eq!(type_of(min_ipq), "indexed_priority_queue::MinIndexedPriorityQueue<u8>");
+    /// ```
     fn from(values: &'a mut Vec<T>) -> Self {
         let npt = values.len().next_power_of_two();
         let mut values_map = vec![None; npt];
@@ -75,6 +101,7 @@ impl<'a, T> From<&'a mut Vec<T>> for MinIndexedPriorityQueue<'a, T>
             end: values.len(),
         }
             .for_each(|i| values_map[i] = Some(i));
+
         let position_map = values_map.clone();
         let inverse_map = values_map;
 
