@@ -2,17 +2,17 @@ pub trait IndexedPriorityQueue<T> {
     fn append(&mut self, extra_values: &mut Vec<T>);
     fn contains(&self, key_index: usize) -> bool;
     fn decrease(&mut self, key_index: usize, value: T);
-    fn delete(&mut self, key_index: usize) -> T;
+    fn delete(&mut self, key_index: usize) -> Option<T>;
     fn drain(&mut self, start: usize, end: usize) -> Vec<T>;
     fn insert(&mut self, key_index: usize, value: T);
     fn increase(&mut self, key_index: usize, value: T);
-    fn peek_min_key_index(&self) -> usize;
-    fn peek_min_value(&self) -> T;
-    fn poll_min_key_index(&mut self) -> usize;
-    fn poll_min_value(&mut self) -> T;
+    fn peek_min_key_index(&self) -> Option<usize>;
+    fn peek_min_value(&self) -> Option<T>;
+    fn poll_min_key_index(&mut self) -> Option<usize>;
+    fn poll_min_value(&mut self) -> Option<T>;
     fn push(&mut self, value: T);
     fn update(&mut self, key_index: usize, value: T) -> T;
-    fn value_of(&self, key_index: usize) -> T;
+    fn value_of(&self, key_index: usize) -> Option<T>;
 }
 
 pub trait IndexedBinaryHeap {

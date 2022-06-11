@@ -23,10 +23,9 @@ fn max_value_index<T: Copy + Ord>(array: &Vec<T>) -> usize {
         .unwrap()
 }
 
-#[derive(Clone)]
 pub struct MinIndexedPriorityQueue<'a, T>
-    where
-        T: Clone,
+where
+    T: Clone,
 {
     values: &'a mut Vec<T>,
     position_map: Vec<Option<usize>>,
@@ -81,11 +80,11 @@ impl<'a, T> IndexedBinaryHeap for MinIndexedPriorityQueue<'a, T>
     fn min_child(&self, mut i: usize) -> Option<usize> {
         let number_of_direct_childs_per_node = 2;
         let mut from = number_of_direct_childs_per_node * i + 1;
-        let mut to = from + number_of_direct_childs_per_node;
-
-        if to > self.size() {
-            to = self.size();
-        }
+        let to = if let true = (from + number_of_direct_childs_per_node) > self.size() {
+            self.size()
+        } else {
+            from + number_of_direct_childs_per_node
+        };
 
         let mut index: Option<usize> = None;
 
@@ -157,9 +156,11 @@ where
     }
 
     fn contains(&self, key_index: usize) -> bool {
-        self.key_in_bounds_or_panic(key_index);
-
-        self.position_map[key_index].is_some()
+        return if key_index > (self.size() - 1) {
+            false
+        } else {
+            true
+        };
     }
 
     fn decrease(&mut self, key_index: usize, value: T) {
@@ -167,26 +168,27 @@ where
         if value < self.values[key_index] {
             self.values[key_index] = value;
 
-            self.swim(self.node_index_by_value_index(key_index))
+            self.swim(self.node_index(key_index))
         }
     }
 
-    fn delete(&mut self, key_index: usize) -> T {
-        self.key_exists_or_panic(key_index);
-
-        let i = self.node_index_by_value_index(key_index);
+    fn delete(&mut self, key_index: usize) -> Option<T> {
         let size = self.size() - 1;
+        if size < key_index {
+            return None;
+        }
 
         let im_index_max = max_value_index(&self.inverse_map);
         let pm_index_max = max_value_index(&self.position_map);
 
+        let i = self.node_index(key_index);
+
         self.inverse_map.swap(size, im_index_max);
         self.position_map.swap(size, pm_index_max);
-
         self.inverse_map[size] = None;
         self.position_map[size] = None;
 
-        let value = self.values[key_index].clone();
+        let value = Some(self.values[key_index].clone());
         self.values.remove(key_index);
 
         self.sink(i);
@@ -223,52 +225,64 @@ where
     }
 
     fn insert(&mut self, key_index: usize, value: T) {
-        self.key_implies_expanding_need(key_index);
-
         let size = self.size();
-        self.position_map[size] = Some(size);
-        self.inverse_map[size] = Some(size);
-        self.values.insert(key_index, value);
-        self.swim(size);
+        if key_index == size {
+            self.push(value);
+        } else {
+            self.position_map[size] = Some(size);
+            self.inverse_map[size] = Some(size);
+            self.values.insert(key_index, value);
+            self.swim(size);
+        }
     }
 
     fn increase(&mut self, key_index: usize, value: T) {
         self.key_exists_or_panic(key_index);
         if self.values[key_index] < value {
             self.values[key_index] = value;
-            self.sink(self.node_index_by_value_index(key_index));
+            self.sink(self.node_index(key_index));
         }
     }
 
     #[inline]
-    fn peek_min_key_index(&self) -> usize {
-        self.is_not_empty_or_panic();
-
-        self.value_index_by_node_index(0)
+    fn peek_min_key_index(&self) -> Option<usize> {
+        self.inverse_map[0]
     }
 
-    fn peek_min_value(&self) -> T {
-        self.values[self.peek_min_key_index()].clone()
+    fn peek_min_value(&self) -> Option<T> {
+        if self.is_empty() {
+            return None;
+        }
+        Some(self.values[self.peek_min_key_index().unwrap()].clone())
     }
 
-    fn poll_min_key_index(&mut self) -> usize {
+    fn poll_min_key_index(&mut self) -> Option<usize> {
+        if self.is_empty() {
+            return None;
+        }
         let min_key_index = self.peek_min_key_index();
-        self.delete(min_key_index);
+        self.delete(min_key_index.unwrap());
 
         min_key_index
     }
 
-    fn poll_min_value(&mut self) -> T {
+    fn poll_min_value(&mut self) -> Option<T> {
+        if self.is_empty() {
+            return None;
+        }
         let min_value = self.peek_min_value();
         let min_key_index = self.peek_min_key_index();
-        self.delete(min_key_index);
+        self.delete(min_key_index.unwrap());
 
         min_value
     }
 
     fn push(&mut self, value: T) {
         let size = self.size();
-        self.key_implies_expanding_need(size);
+
+        if size >= self.position_map.len() {
+            self.expand_mapping();
+        };
 
         self.position_map[size] = Some(size);
         self.inverse_map[size] = Some(size);
@@ -279,7 +293,7 @@ where
     fn update(&mut self, key_index: usize, value: T) -> T {
         self.key_exists_or_panic(key_index);
 
-        let i = self.node_index_by_value_index(key_index);
+        let i = self.node_index(key_index);
         let old_value = self.values[key_index].clone();
 
         self.values[key_index] = value;
@@ -289,9 +303,11 @@ where
         old_value
     }
 
-    fn value_of(&self, key_index: usize) -> T {
-        self.key_exists_or_panic(key_index);
-        self.values[key_index].clone()
+    fn value_of(&self, key_index: usize) -> Option<T> {
+        if (self.size() - 1) < key_index {
+            return None;
+        }
+        Some(self.values[key_index].clone())
     }
 }
 
@@ -300,18 +316,13 @@ where
     T: Clone + PartialOrd,
 {
     #[inline]
-    fn node_index_by_value_index(&self, i: usize) -> usize {
+    fn node_index(&self, i: usize) -> usize {
         self.position_map[i].unwrap()
     }
 
     #[inline]
-    fn value_index_by_node_index(&self, i: usize) -> usize {
-        self.inverse_map[i].unwrap()
-    }
-
-    #[inline]
     fn priority_sequenced_value(&self, i: usize) -> &T {
-        &self.values[self.value_index_by_node_index(i)]
+        &self.values[self.inverse_map[i].unwrap()]
     }
 
     pub fn from_vec_ref(values: &'a mut Vec<T>) -> Self {
@@ -338,7 +349,7 @@ where
     pub fn left_child(&self, node_index: usize) -> Option<&T> {
         let i = 2 * node_index + 1;
         return if i < self.values.len() {
-            Some(&self.values[self.value_index_by_node_index(i)])
+            Some(&self.values[self.inverse_map[i].unwrap()])
         } else {
             None
         };
@@ -347,7 +358,7 @@ where
     pub fn right_child(&self, node_index: usize) -> Option<&T> {
         let i = 2 * node_index + 2;
         return if i < self.values.len() {
-            Some(&self.values[self.value_index_by_node_index(i)])
+            Some(&self.values[self.inverse_map[i].unwrap()])
         } else {
             None
         };
@@ -386,30 +397,9 @@ where
         self.size() - 1
     }
 
-    fn key_implies_expanding_need(&mut self, key_index: usize) {
-        if key_index >= self.position_map.len() && key_index == self.values.len() {
-            self.expand_mapping();
-        }
-    }
-
-    fn is_not_empty_or_panic(&self) {
-        if self.is_empty() {
-            panic!("Priority Queue is empty. There is no value to extract");
-        }
-    }
-
     fn key_exists_or_panic(&self, key_index: usize) {
         if !self.contains(key_index) {
             panic!("Index does not exist; received: {}", key_index);
-        }
-    }
-
-    fn key_in_bounds_or_panic(&self, key_index: usize) {
-        if key_index >= self.position_map.len() {
-            panic!(
-                "Key index way off expanding capacity/necessity; received: {}",
-                key_index
-            );
         }
     }
 }
@@ -602,12 +592,12 @@ mod min_indexed_pq_tests {
     fn poll_insert_peek_methods_should_run_without_breaking_data_structure() {
         let mut values = vec![1, 2, 2, 2, 0];
         let mut ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
-        assert_eq!(ipq.poll_min_value(), 0);
-        assert_eq!(ipq.poll_min_value(), 1);
-        assert_eq!(ipq.poll_min_value(), 2);
+        assert_eq!(ipq.poll_min_value(), Some(0));
+        assert_eq!(ipq.poll_min_value(), Some(1));
+        assert_eq!(ipq.poll_min_value(), Some(2));
 
         ipq.insert(ipq.size(), -100);
-        assert_eq!(ipq.peek_min_value(), -100);
+        assert_eq!(ipq.peek_min_value(), Some(-100));
     }
 
     #[test]
@@ -700,7 +690,7 @@ mod min_indexed_pq_tests {
         ipq.drain(5, 11);
 
         assert_eq!(ipq.size(), 5);
-        assert_eq!(ipq.peek_min_value(), 5);
+        assert_eq!(ipq.peek_min_value(), Some(5));
         assert_eq!(ipq.inverse_map.len(), 16);
         assert_eq!(ipq.position_map.len(), 16);
     }
@@ -724,11 +714,11 @@ mod min_indexed_pq_tests {
         ipq.decrease(1, -2);
 
         assert_eq!(ipq.size(), 3);
-        assert_eq!(ipq.peek_min_key_index(), 0);
-        assert_eq!(ipq.poll_min_value(), -100);
-        assert_eq!(ipq.peek_min_key_index(), 0);
-        assert_eq!(ipq.poll_min_value(), -2);
-        assert_eq!(ipq.poll_min_value(), 0);
+        assert_eq!(ipq.peek_min_key_index(), Some(0));
+        assert_eq!(ipq.poll_min_value(), Some(-100));
+        assert_eq!(ipq.peek_min_key_index(), Some(0));
+        assert_eq!(ipq.poll_min_value(), Some(-2));
+        assert_eq!(ipq.poll_min_value(), Some(0));
     }
 
     #[test]
@@ -740,11 +730,11 @@ mod min_indexed_pq_tests {
         ipq.increase(1, 10);
 
         assert_eq!(ipq.size(), 3);
-        assert_eq!(ipq.peek_min_key_index(), 2);
-        assert_eq!(ipq.poll_min_value(), 0);
-        assert_eq!(ipq.peek_min_key_index(), 1);
-        assert_eq!(ipq.poll_min_value(), 10);
-        assert_eq!(ipq.poll_min_value(), 100);
+        assert_eq!(ipq.peek_min_key_index(), Some(2));
+        assert_eq!(ipq.poll_min_value(), Some(0));
+        assert_eq!(ipq.peek_min_key_index(), Some(1));
+        assert_eq!(ipq.poll_min_value(), Some(10));
+        assert_eq!(ipq.poll_min_value(), Some(100));
     }
 
     #[test]
@@ -752,9 +742,9 @@ mod min_indexed_pq_tests {
         let mut values: Vec<i32> = vec![9, 8, 0];
         let mut ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
 
-        assert_eq!(ipq.poll_min_value(), 0);
-        assert_eq!(ipq.poll_min_value(), 8);
-        assert_eq!(ipq.poll_min_value(), 9);
+        assert_eq!(ipq.poll_min_value(), Some(0));
+        assert_eq!(ipq.poll_min_value(), Some(8));
+        assert_eq!(ipq.poll_min_value(), Some(9));
         assert!(ipq.is_empty());
     }
 
@@ -763,9 +753,9 @@ mod min_indexed_pq_tests {
         let mut values: Vec<i32> = vec![9, 8, 0];
         let mut ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
 
-        assert_eq!(ipq.poll_min_key_index(), 2);
-        assert_eq!(ipq.poll_min_key_index(), 1);
-        assert_eq!(ipq.poll_min_key_index(), 0);
+        assert_eq!(ipq.poll_min_key_index(), Some(2));
+        assert_eq!(ipq.poll_min_key_index(), Some(1));
+        assert_eq!(ipq.poll_min_key_index(), Some(0));
     }
 
     #[test]
@@ -773,9 +763,9 @@ mod min_indexed_pq_tests {
         let mut values: Vec<i32> = vec![9, 8, 0];
         let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
 
-        assert_eq!(ipq.value_of(1), 8);
-        assert_eq!(ipq.value_of(0), 9);
-        assert_eq!(ipq.value_of(2), 0);
+        assert_eq!(ipq.value_of(1), Some(8));
+        assert_eq!(ipq.value_of(0), Some(9));
+        assert_eq!(ipq.value_of(2), Some(0));
     }
 
     #[test]
@@ -783,13 +773,13 @@ mod min_indexed_pq_tests {
         let mut values = vec![1, 2, 2, 2, 0];
         let mut ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
 
-        assert_eq!(ipq.peek_min_value(), 0);
+        assert_eq!(ipq.peek_min_value(), Some(0));
         assert_eq!(ipq.update(1, -1), 2);
-        assert_eq!(ipq.peek_min_value(), -1);
+        assert_eq!(ipq.peek_min_value(), Some(-1));
         assert_eq!(ipq.update(3, -5), 2);
-        assert_eq!(ipq.poll_min_value(), -5);
+        assert_eq!(ipq.poll_min_value(), Some(-5));
         assert_eq!(ipq.update(1, 4), -1);
-        assert_eq!(ipq.poll_min_value(), 0);
+        assert_eq!(ipq.poll_min_value(), Some(0));
     }
 
     #[test]
@@ -811,6 +801,31 @@ mod min_indexed_pq_tests {
     }
 
     #[test]
+    fn polling_empty_pq_should_return_none() {
+        let mut values: Vec<u8> = Vec::new();
+        let mut ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
+
+        assert_eq!(ipq.poll_min_value(), None);
+    }
+
+    #[test]
+    fn peek_on_empty_pq_should_return_none() {
+        let mut values: Vec<u8> = Vec::new();
+        let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
+
+        assert!(ipq.is_empty());
+        assert_eq!(ipq.peek_min_value(), None);
+    }
+
+    #[test]
+    fn invalid_key_index_should_return_none() {
+        let mut values = vec![1, 2, 2, 2, 0];
+        let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
+
+        assert_eq!(ipq.value_of(5), None);
+    }
+
+    #[test]
     #[should_panic]
     fn invalid_key_index_should_panic_insert_at_value_method() {
         let mut values = vec![1, 2, 2, 2, 0];
@@ -826,33 +841,5 @@ mod min_indexed_pq_tests {
         let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
 
         ipq.priority_sequenced_value(5);
-    }
-
-    #[test]
-    #[should_panic]
-    fn invalid_key_index_should_trigger_exist_key_panic() {
-        let mut values = vec![1, 2, 2, 2, 0];
-        let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
-
-        ipq.value_of(5);
-    }
-
-    #[test]
-    #[should_panic]
-    fn peek_on_empty_pq_should_panic() {
-        let mut values: Vec<u8> = vec![];
-        let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
-
-        assert!(ipq.is_empty());
-        ipq.peek_min_value();
-    }
-
-    #[test]
-    #[should_panic]
-    fn insert_on_a_already_occupied_index_should_panic() {
-        let mut values = vec![1, 2, 2, 2];
-        let ipq = MinIndexedPriorityQueue::from_vec_ref(&mut values);
-
-        ipq.contains(10);
     }
 }
