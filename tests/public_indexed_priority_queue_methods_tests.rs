@@ -8,12 +8,13 @@ fn test_insertion_and_polling_until_emptiness() {
 
     ipq.insert(5, 4);
 
-    assert_eq!(ipq.poll_min_value(), 0);
-    assert_eq!(ipq.poll_min_value(), 1);
-    assert_eq!(ipq.poll_min_value(), 2);
-    assert_eq!(ipq.poll_min_value(), 2);
-    assert_eq!(ipq.poll_min_value(), 2);
-    assert_eq!(ipq.poll_min_value(), 4);
+    assert_eq!(ipq.poll_min_value(), Some(0));
+    assert_eq!(ipq.poll_min_value(), Some(1));
+    assert_eq!(ipq.poll_min_value(), Some(2));
+    assert_eq!(ipq.poll_min_value(), Some(2));
+    assert_eq!(ipq.poll_min_value(), Some(2));
+    assert_eq!(ipq.poll_min_value(), Some(4));
+    assert_eq!(ipq.poll_min_value(), None);
     assert!(ipq.is_empty());
 }
 
@@ -27,10 +28,11 @@ fn test_decrease_and_polling_until_emptiness() {
     ipq.decrease(2, -3);
     ipq.decrease(3, -4);
 
-    assert_eq!(ipq.poll_min_value(), -4);
-    assert_eq!(ipq.poll_min_value(), -3);
-    assert_eq!(ipq.poll_min_value(), -2);
-    assert_eq!(ipq.poll_min_value(), -1);
-    assert_eq!(ipq.poll_min_value(), 0);
+    assert_eq!(ipq.poll_min_value(), Some(-4));
+    assert_eq!(ipq.poll_min_value(), Some(-3));
+    assert_eq!(ipq.poll_min_value(), Some(-2));
+    assert_eq!(ipq.poll_min_value(), Some(-1));
+    assert_eq!(ipq.poll_min_value(), Some(0));
+    assert_eq!(ipq.poll_min_value(), None);
     assert!(ipq.is_empty());
 }
